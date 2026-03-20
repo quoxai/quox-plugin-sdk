@@ -8,7 +8,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm test --workspaces --if-present"
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.16",
+    "jsdom": "^29.0.1",
+    "vitest": "^3.0.0"
   },
   "license": "MIT"
 }

@@ -14,14 +14,34 @@ This guide walks through building your first QuoxCORE plugin from scratch.
 npx create-quox-plugin my-first-plugin
 ```
 
-You will be prompted for:
+You will be prompted to select a template:
 
 ```
-Plugin name (kebab-case): my-first-plugin
+Select a template:
+
+  1. basic                — Minimal sidebar plugin (hello world)
+  2. monitoring-dashboard — Connect to a service, poll data, display status
+  3. fleet-management     — Manage hosts/containers with safety gates
+  4. service-bridge       — Integrate a third-party service with a specialist agent
+  5. ui-feature           — Client-side feature with storage and config
+  6. enterprise-extension — Multi-tier plugin with memory, AOCL, and backend
+
+Template number [1]:
+```
+
+For your first plugin, select **1 (basic)**. Then provide:
+
+```
 Display name [My First Plugin]: My First Plugin
-Category (Monitoring, Productivity, ...) [Other]: Productivity
+Category (...) [Other]: Productivity
 Author: Your Name
 Description: A simple QuoxCORE plugin
+```
+
+You can also skip the menu with `--template`:
+
+```bash
+npx create-quox-plugin my-first-plugin --template basic
 ```
 
 This creates a project with the following structure:
@@ -37,6 +57,8 @@ my-first-plugin/
     └── views/
         └── MainView.jsx   # Your main UI component
 ```
+
+More advanced templates generate additional files (settings panels, components, hooks, mock data). See [Templates](./templates.md) for the full comparison.
 
 ## Step 2: Install Dependencies
 
@@ -161,7 +183,9 @@ To update your plugin in QuoxCORE:
 
 ## Next Steps
 
+- [Templates Overview](./templates.md) — All 6 templates compared
 - [Plugin API Reference](./plugin-api.md) — Storage, notifications, memory, AEE
 - [Backend Plugins](./backend-plugins.md) — Adding a backend service
 - [Signing & Distribution](./signing.md) — Signing plugins for verified distribution
-- [Manifest Reference](./manifest.md) — Complete manifest field reference
+- [Claude Skill](./claude-skill.md) — AI-assisted plugin development
+- Template tutorials: [monitoring](./tutorials/monitoring-dashboard.md), [fleet](./tutorials/fleet-management.md), [service bridge](./tutorials/service-bridge.md), [UI feature](./tutorials/ui-feature.md), [enterprise](./tutorials/enterprise-extension.md)

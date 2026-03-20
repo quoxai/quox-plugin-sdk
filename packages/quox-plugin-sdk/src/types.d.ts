@@ -2,6 +2,73 @@
  * QuoxCORE Plugin SDK — TypeScript type definitions
  */
 
+// --- Config & Safety Types ---
+
+export interface ConfigSchemaField {
+    type: 'string' | 'number' | 'boolean' | 'password' | 'select' | 'url';
+    label: string;
+    description?: string;
+    default?: any;
+    options?: string[];
+    premium?: boolean;
+    enterprise?: boolean;
+}
+
+export interface SafetyConfig {
+    destructiveActions: string[];
+    requiresApproval: string[];
+    aeeRequired: boolean;
+    killSwitchEnabled: boolean;
+}
+
+// --- NOC Integration Types ---
+
+export interface NocQuickAction {
+    id: string;
+    label: string;
+    icon: string;
+    description: string;
+    severity: 'info' | 'warning' | 'critical';
+    prompt: string;
+}
+
+export interface NocIntegration {
+    tab: {
+        label: string;
+        icon: string;
+    };
+    quickActions: NocQuickAction[];
+}
+
+// --- Agent Types ---
+
+export interface SpecialistAgent {
+    name: string;
+    description: string;
+    capabilities: string[];
+}
+
+// --- Tier & Licensing Types ---
+
+export type ComparisonTier = Record<string, Record<string, string | boolean | number>>;
+
+export type TierLimits = Record<string, Record<string, any>>;
+
+export interface Capabilities {
+    aeeIntents: string[];
+    toolAccess?: string[];
+}
+
+// --- Marketing Types ---
+
+export interface Testimonial {
+    quote: string;
+    author: string;
+    role: string;
+}
+
+// --- Plugin Manifest ---
+
 export interface PluginManifest {
     id: string;
     name: string;
@@ -19,6 +86,18 @@ export interface PluginManifest {
         healthPath?: string;
         port?: number;
     };
+    configSchema?: Record<string, ConfigSchemaField>;
+    safety?: SafetyConfig;
+    nocIntegration?: NocIntegration;
+    specialist?: SpecialistAgent;
+    comparison?: ComparisonTier;
+    limits?: TierLimits;
+    capabilities?: Capabilities;
+    heroGradient?: string;
+    accentColor?: string;
+    badge?: string;
+    testimonials?: Testimonial[];
+    marketingPoints?: string[];
 }
 
 export type PluginPermission =

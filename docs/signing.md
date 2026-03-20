@@ -73,7 +73,7 @@ Plugin developers can generate license keys for paid plugins.
 ### Generate a License
 
 ```bash
-node scripts/generate-plugin-license.js \
+node scripts/generate-license.js \
   --plugin my-monitor \
   --customer "Acme Corp" \
   --expires 2027-12-31 \
