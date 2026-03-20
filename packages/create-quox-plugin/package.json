@@ -1,0 +1,10 @@
+{
+  "name": "create-quox-plugin",
+  "version": "0.1.0",
+  "description": "Scaffold a new QuoxCORE third-party plugin",
+  "bin": {
+    "create-quox-plugin": "./bin/create.js"
+  },
+  "keywords": ["quox", "plugin", "scaffold", "create"],
+  "license": "MIT"
+}

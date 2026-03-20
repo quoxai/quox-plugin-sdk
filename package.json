@@ -1,0 +1,14 @@
+{
+  "name": "quox-plugin-sdk-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QuoxCORE Plugin SDK — tools for building third-party plugins",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces --if-present"
+  },
+  "license": "MIT"
+}
