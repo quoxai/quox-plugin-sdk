@@ -22,6 +22,8 @@ Guide the developer through template selection and scaffolding.
 | `service-bridge` | Integrating a third-party API/service | OAuth vault, specialist agent, agent tools, tiered features, memory, marketing metadata |
 | `ui-feature` | Client-side productivity tool (tracker, library, notes) | Plugin storage, config panel, license gate, empty state, dark theme |
 | `enterprise-extension` | Complex multi-tier plugin with backend | Memory API, AOCL events, Docker backend, multi-tier limits, usage meters, upgrade gates |
+| `specialist-agent` | Specialist agent with tools and persona (Security Scanner) | Agent definition (agentRegistry shape), persona (assistants.js shape), 3 tools (tool_use format), inline chat, DEFCON, autonomy, budget, schedule |
+| `agentic-team` | Multi-agent team with orchestrator (DevOps Team) | Team definition (teams/*.json shape), 4 agents, 4 personas, 8 tools, policies (VOLT, approval, checkpoint), task queue, shared context |
 
 **Procedure:**
 1. Ask what the plugin does (one sentence)

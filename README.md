@@ -33,6 +33,8 @@ Select a template:
   4. service-bridge       — Integrate a third-party service with a specialist agent
   5. ui-feature           — Client-side feature with storage and config
   6. enterprise-extension — Multi-tier plugin with memory, AOCL, and backend
+  7. specialist-agent     — Specialist agent with tools, persona, and autonomy
+  8. agentic-team         — Multi-agent team with orchestrator and policies
 ```
 
 Or specify directly: `npx create-quox-plugin my-plugin --template monitoring-dashboard`
@@ -67,6 +69,8 @@ Go to **Settings > Plugins > Community Plugins > Install Plugin** and upload the
 | `service-bridge` | Third-party integration | OAuth, specialist agent, tiered features, marketing metadata |
 | `ui-feature` | Client-side productivity tool | Plugin storage, config panel, empty state |
 | `enterprise-extension` | Complex multi-tier plugin | Memory API, AOCL events, Docker backend, usage meters, upgrade gates |
+| `specialist-agent` | Specialist agent plugin | Agent definition, persona, 3 tools, inline chat, DEFCON, autonomy |
+| `agentic-team` | Multi-agent team plugin | Team definition, 4 agents, 8 tools, policies, task queue |
 
 See [docs/templates.md](docs/templates.md) for the full comparison and platform features matrix.
 
@@ -77,6 +81,8 @@ See [docs/templates.md](docs/templates.md) for the full comparison and platform 
 - [Integrating a Third-Party Service](docs/tutorials/service-bridge.md)
 - [Building a UI Feature Plugin](docs/tutorials/ui-feature.md)
 - [Building an Enterprise Plugin](docs/tutorials/enterprise-extension.md)
+- [Building a Specialist Agent Plugin](docs/tutorials/specialist-agent.md)
+- [Building an Agentic Team Plugin](docs/tutorials/agentic-team.md)
 
 ## Plugin Architecture
 
@@ -271,7 +277,7 @@ See [docs/claude-skill.md](docs/claude-skill.md) for details.
 | Document | Description |
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Step-by-step first plugin guide |
-| [Templates](docs/templates.md) | All 6 templates compared |
+| [Templates](docs/templates.md) | All 8 templates compared |
 | [Plugin API](docs/plugin-api.md) | Storage, notifications, memory, AEE |
 | [Backend Plugins](docs/backend-plugins.md) | Adding a Docker backend service |
 | [Signing & Licensing](docs/signing.md) | Ed25519 signatures and license keys |

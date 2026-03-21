@@ -12,6 +12,8 @@ The scaffolder provides 6 archetype-based templates, each pre-wired with the Quo
 | `service-bridge` | Third-party integration (GitHub pattern) | + network, aee, tools, memory | OAuth vault, specialist agent, tiered features, marketing metadata |
 | `ui-feature` | Client-side tool (Action Tracker) | sidebar, storage, notifications | Plugin storage, config panel, empty state, dark theme |
 | `enterprise-extension` | Multi-tier with backend (Advanced Memory) | + network, memory, aee | Memory API, AOCL events, Docker backend, usage meters, upgrade gates |
+| `specialist-agent` | Specialist agent with tools and persona (Security Scanner) | + network, aee, tools, memory | Agent definition, persona, 3 tools, inline chat, DEFCON, budget, autonomy |
+| `agentic-team` | Multi-agent team with orchestrator (DevOps Team) | + network, aee, tools, memory | Team definition, 4 agents, 4 personas, 8 tools, policies, task queue |
 
 ## When to Use Each Template
 
@@ -39,6 +41,14 @@ Choose this for client-side productivity tools that persist state locally. Inclu
 
 Choose this for complex plugins that need a backend service, multi-tier licensing, and platform integrations. Includes a Docker backend, usage meters, upgrade gates, memory API integration, and AOCL event emission. Modelled on Advanced Memory and AOCL Compliance Suite plugins.
 
+### specialist-agent
+
+Choose this when building a plugin that registers a specialist agent with the platform. The agent has its own persona, tools (Claude tool_use format), autonomy settings, DEFCON level, and budget constraints. Includes an inline chat panel for direct agent interaction, tool cards with parameter forms, and quick action chips. Modelled on FORGE, NETWATCH, and QUOXCODE built-in agents.
+
+### agentic-team
+
+Choose this when building a plugin that provides a coordinated team of agents working together. Includes a team definition (matching teams/*.json shape), an orchestrator agent, specialist and analyst members, shared context, policies (VOLT, approval, checkpointing), and a task queue. Modelled on secops, chief-small, and software-dev built-in teams.
+
 ## Generated Files
 
 ### Common to All Templates
@@ -61,27 +71,38 @@ Choose this for complex plugins that need a backend service, multi-tier licensin
 | service-bridge | `src/views/SettingsPanel.jsx`, `src/components/AgentSidebar.jsx`, `src/data/mock.js` |
 | ui-feature | `src/views/SettingsPanel.jsx`, `src/components/EmptyState.jsx`, `src/data/mock.js` |
 | enterprise-extension | `src/views/SettingsPanel.jsx`, `src/components/UsageMeter.jsx`, `src/components/UpgradeGate.jsx`, `src/data/mock.js`, `backend/server.js`, `backend/package.json`, `Dockerfile` |
+| specialist-agent | `src/agent/agentDef.js`, `src/agent/agentPersona.js`, `src/agent/tools.js`, `src/views/SettingsPanel.jsx`, `src/components/AgentStatusCard.jsx`, `src/components/ToolCard.jsx`, `src/components/AgentChat.jsx`, `src/data/mock.js` |
+| agentic-team | `src/team/teamDef.js`, `src/team/agents.js`, `src/team/personas.js`, `src/team/tools.js`, `src/team/policies.js`, `src/views/SettingsPanel.jsx`, `src/components/MemberCard.jsx`, `src/components/TaskQueue.jsx`, `src/components/SharedContextPanel.jsx`, `src/components/PolicyBadges.jsx`, `src/data/mock.js` |
 
 ## Platform Features Matrix
 
-| Feature | basic | monitoring | fleet | bridge | ui | enterprise |
-|---------|-------|-----------|-------|--------|-----|-----------|
-| Sidebar entry | Yes | Yes | Yes | Yes | Yes | Yes |
-| Settings panel | — | Yes | Yes | Yes | Yes | Yes |
-| Config schema | — | Yes | Yes | Yes | Yes | Yes |
-| Plugin storage | — | — | — | — | Yes | — |
-| Data polling | — | Yes | — | — | — | — |
-| NOC integration | — | Yes | — | — | — | — |
-| Safety gates | — | — | Yes | Yes | — | — |
-| AEE audit | — | — | Yes | Yes | — | Yes |
-| Agent tools | — | — | Yes | Yes | — | — |
-| Specialist agent | — | — | — | Yes | — | — |
-| Memory API | — | — | — | Yes | — | Yes |
-| Tiered comparison | — | — | — | Yes | Yes | Yes |
-| Usage meters | — | — | — | — | — | Yes |
-| Upgrade gates | — | — | — | — | — | Yes |
-| Backend container | — | — | — | — | — | Yes |
-| Marketing metadata | — | — | — | Yes | — | — |
+| Feature | basic | monitoring | fleet | bridge | ui | enterprise | agent | team |
+|---------|-------|-----------|-------|--------|-----|-----------|-------|------|
+| Sidebar entry | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Settings panel | — | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Config schema | — | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Plugin storage | — | — | — | — | Yes | — | — | — |
+| Data polling | — | Yes | — | — | — | — | — | — |
+| NOC integration | — | Yes | — | — | — | — | — | — |
+| Safety gates | — | — | Yes | Yes | — | — | Yes | Yes |
+| AEE audit | — | — | Yes | Yes | — | Yes | Yes | Yes |
+| Agent tools | — | — | Yes | Yes | — | — | Yes | Yes |
+| Specialist agent | — | — | — | Yes | — | — | Yes | — |
+| Agent definition | — | — | — | — | — | — | Yes | Yes |
+| Agent persona | — | — | — | — | — | — | Yes | Yes |
+| Tool definitions | — | — | — | — | — | — | Yes | Yes |
+| Team definition | — | — | — | — | — | — | — | Yes |
+| Team policies | — | — | — | — | — | — | — | Yes |
+| Inline chat | — | — | — | — | — | — | Yes | — |
+| Task queue | — | — | — | — | — | — | — | Yes |
+| DEFCON support | — | — | — | — | — | — | Yes | Yes |
+| Autonomy/budget | — | — | — | — | — | — | Yes | Yes |
+| Memory API | — | — | — | Yes | — | Yes | Yes | Yes |
+| Tiered comparison | — | — | — | Yes | Yes | Yes | — | — |
+| Usage meters | — | — | — | — | — | Yes | — | — |
+| Upgrade gates | — | — | — | — | — | Yes | — | — |
+| Backend container | — | — | — | — | — | Yes | — | — |
+| Marketing metadata | — | — | — | Yes | — | — | — | — |
 
 ## Scaffolding
 
@@ -102,3 +123,5 @@ The basic template is covered by the [Getting Started](getting-started.md) guide
 - [Integrating a Third-Party Service](tutorials/service-bridge.md)
 - [Building a UI Feature Plugin](tutorials/ui-feature.md)
 - [Building an Enterprise Plugin](tutorials/enterprise-extension.md)
+- [Building a Specialist Agent Plugin](tutorials/specialist-agent.md)
+- [Building an Agentic Team Plugin](tutorials/agentic-team.md)

@@ -48,6 +48,122 @@ export interface SpecialistAgent {
     capabilities: string[];
 }
 
+export interface AgentPersonality {
+    tone: string;
+    verbosity: 'low' | 'medium' | 'high';
+    formality: 'casual' | 'professional' | 'formal';
+    traits: string[];
+}
+
+export interface AgentBudget {
+    maxTokensPerRun: number;
+    maxToolCallsPerRun: number;
+    maxDurationMs: number;
+    maxDailyRuns: number;
+}
+
+export interface AgentEscalation {
+    onHighRisk: 'ESCALATE' | 'DEFER' | 'ABORT';
+    onBudgetWarning: 'ESCALATE' | 'DEFER' | 'ABORT';
+    onFailure: 'ESCALATE' | 'DEFER' | 'ABORT';
+    maxRetries: number;
+}
+
+export interface AgentAutonomy {
+    canRunAutonomously: boolean;
+    defaultSchedule?: string;
+    budget: AgentBudget;
+    escalation: AgentEscalation;
+    allowedTriggers?: string[];
+}
+
+export interface AgentDefinition {
+    id: string;
+    name: string;
+    role: 'orchestrator' | 'specialist' | 'analyst';
+    level: number;
+    domain: string;
+    description: string;
+    ownership: { source: 'plugin'; plugin: string };
+    systemPrompt: string;
+    personality: AgentPersonality;
+    capabilities: string[];
+    tools: string[];
+    defconLevel: 'GREEN' | 'AMBER' | 'ORANGE' | 'RED';
+    autonomy: AgentAutonomy;
+    suggestions: string[];
+    manages?: string[];
+    reportsTo?: string;
+    collaboratesWith?: string[];
+}
+
+export interface LlmConfig {
+    provider: string;
+    model: string;
+    temperature: number;
+    maxTokens: number;
+}
+
+export interface AgentPersona {
+    id: string;
+    name: string;
+    shortName: string;
+    voice: string;
+    color: string;
+    colorRgb: string;
+    specialty: string;
+    description: string;
+    llm: LlmConfig;
+    systemPrompt: string;
+}
+
+export interface ToolDefinition {
+    name: string;
+    description: string;
+    input_schema: {
+        type: 'object';
+        properties: Record<string, any>;
+        required?: string[];
+    };
+}
+
+// --- Team Types ---
+
+export interface TeamMemberRef {
+    agentId: string;
+    role: 'orchestrator' | 'specialist' | 'analyst';
+    domains: string[];
+}
+
+export interface TeamPolicies {
+    maxBudgetTokens: number;
+    maxBudgetToolCalls: number;
+    maxDurationMs: number;
+    maxTaskDurationMs: number;
+    heartbeatIntervalMs: number;
+    maxParallelTasks: number;
+    requireApprovalBeforeStart: boolean;
+    checkpointAfterEachTask: boolean;
+    voltRequired: boolean;
+    allowedChannels: string[];
+}
+
+export interface TeamDefinition {
+    id: string;
+    type: 'team';
+    version: string;
+    displayName: string;
+    description: string;
+    author?: string;
+    tier?: string;
+    icon?: string;
+    accentColor?: string;
+    orchestrator: TeamMemberRef;
+    members: TeamMemberRef[];
+    policies: TeamPolicies;
+    sharedContext: string;
+}
+
 // --- Tier & Licensing Types ---
 
 export type ComparisonTier = Record<string, Record<string, string | boolean | number>>;
@@ -90,6 +206,12 @@ export interface PluginManifest {
     safety?: SafetyConfig;
     nocIntegration?: NocIntegration;
     specialist?: SpecialistAgent;
+    agentDefinition?: AgentDefinition;
+    agentPersona?: AgentPersona;
+    toolDefinitions?: ToolDefinition[];
+    team?: TeamDefinition;
+    agents?: AgentDefinition[];
+    agentPersonas?: AgentPersona[];
     comparison?: ComparisonTier;
     limits?: TierLimits;
     capabilities?: Capabilities;

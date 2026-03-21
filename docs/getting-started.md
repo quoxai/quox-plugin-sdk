@@ -25,6 +25,8 @@ Select a template:
   4. service-bridge       — Integrate a third-party service with a specialist agent
   5. ui-feature           — Client-side feature with storage and config
   6. enterprise-extension — Multi-tier plugin with memory, AOCL, and backend
+  7. specialist-agent     — Specialist agent with tools, persona, and autonomy
+  8. agentic-team         — Multi-agent team with orchestrator and policies
 
 Template number [1]:
 ```
@@ -183,9 +185,9 @@ To update your plugin in QuoxCORE:
 
 ## Next Steps
 
-- [Templates Overview](./templates.md) — All 6 templates compared
+- [Templates Overview](./templates.md) — All 8 templates compared
 - [Plugin API Reference](./plugin-api.md) — Storage, notifications, memory, AEE
 - [Backend Plugins](./backend-plugins.md) — Adding a backend service
 - [Signing & Distribution](./signing.md) — Signing plugins for verified distribution
 - [Claude Skill](./claude-skill.md) — AI-assisted plugin development
-- Template tutorials: [monitoring](./tutorials/monitoring-dashboard.md), [fleet](./tutorials/fleet-management.md), [service bridge](./tutorials/service-bridge.md), [UI feature](./tutorials/ui-feature.md), [enterprise](./tutorials/enterprise-extension.md)
+- Template tutorials: [monitoring](./tutorials/monitoring-dashboard.md), [fleet](./tutorials/fleet-management.md), [service bridge](./tutorials/service-bridge.md), [UI feature](./tutorials/ui-feature.md), [enterprise](./tutorials/enterprise-extension.md), [specialist agent](./tutorials/specialist-agent.md), [agentic team](./tutorials/agentic-team.md)
