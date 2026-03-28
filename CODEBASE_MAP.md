@@ -1,47 +1,53 @@
-<!-- Last verified: 2026-03-21 by /codebase-mirror -->
+<!-- Last verified: 2026-03-27 by /codebase-mirror -->
 
 # Quox Plugin SDK — Codebase Map
 
 ## Metrics
-
 | Metric | Count |
 |--------|-------|
-| Version | 0.1.0 |
-| Monorepo packages | 3 |
-| Templates | 8 |
-| Test files | 2 |
-| Scripts | 3 |
+| Workspace Packages | 3 |
+| Documentation Files | 6 guides + 8 tutorials |
+| Test Files | 0 |
 
-## Stack
+## Packages (3)
 
-Node.js, Vite (plugin build), Vitest (testing)
+### quox-plugin-sdk (Runtime)
+| File | Purpose |
+|------|---------|
+| `src/index.js` | `getSharedDeps()`, `registerPlugin()` |
+| `src/types.d.ts` | PluginManifest, PluginExports, PluginAPI, AgentDefinition, TeamDefinition, SafetyConfig (286 lines) |
+| `src/testing.js` | `createMockPluginApi()`, `setupPluginTestEnv()`, `teardownPluginTestEnv()` |
 
-## Packages
+### create-quox-plugin (Scaffolder CLI)
+| File | Purpose |
+|------|---------|
+| `bin/create.js` | Interactive scaffolder with templates, categories, prompts |
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| quox-plugin-sdk | 0.1.0 | Core types, runtime helpers, testing utilities |
-| create-quox-plugin | 0.1.0 | CLI scaffolder for new plugins |
-| quox-plugin-vite | 0.1.0 | Vite plugin for building QuoxCORE plugins |
+### quox-plugin-vite (Build Plugin)
+| File | Purpose |
+|------|---------|
+| `src/index.js` | Vite plugin: externals, ZIP packaging to `.quoxplugin` |
 
-## Key Files
-
-- packages/quox-plugin-sdk/src/index.js — Runtime SDK
-- packages/quox-plugin-sdk/src/testing.js — Test utilities
-- packages/quox-plugin-sdk/src/types.d.ts — TypeScript type definitions
-- packages/quox-plugin-vite/src/index.js — Vite build plugin
-- packages/create-quox-plugin/bin/create.js — Scaffolder CLI
-
-## Scripts
-
-- scripts/generate-signing-key.js
-- scripts/sign-plugin.js
-- scripts/generate-license.js
+## Type System Highlights
+- Plugin permissions: sidebar, storage, network, memory, notifications, aee, tools
+- Agent types: AgentDefinition, SpecialistAgent, AgentPersonality, AgentBudget, AgentEscalation, AgentAutonomy
+- Safety config: destructiveActions, requiresApproval, aeeRequired, killSwitchEnabled
+- Tier/licensing: ComparisonTier, TierLimits, Capabilities
 
 ## Documentation
+| File | Topic |
+|------|-------|
+| `docs/getting-started.md` | Plugin development walkthrough |
+| `docs/backend-plugins.md` | Backend integration guide |
+| `docs/plugin-api.md` | Complete API reference |
+| `docs/claude-skill.md` | Claude skill integration |
+| `docs/signing.md` | Plugin signing/publishing |
+| `docs/templates.md` | Template variations |
+| 8 tutorials | UI features, service bridges, enterprise, monitoring, fleet, agentic teams, specialist agents |
 
-- docs/getting-started.md
-- docs/plugin-api.md
-- docs/backend-plugins.md
-- docs/signing.md
-- docs/claude-skill.md
+## Invariants
+| Check | Status | Details |
+|-------|--------|---------|
+| package-workspaces | ✓ pass | 3 packages in workspaces |
+| type-coverage | ✓ pass | PluginManifest, PluginAPI, PluginExports all defined |
+| test-coverage | ⚠ warn | No test files found in repo |
