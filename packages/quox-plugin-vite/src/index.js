@@ -31,13 +31,14 @@ function quoxPluginVite(options = {}) {
                         fileName: () => 'plugin.esm.js',
                     },
                     rollupOptions: {
-                        external: ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
+                        external: ['react', 'react-dom', 'react-dom/client', 'react-router-dom', '@quox/glass'],
                         output: {
                             globals: {
                                 react: 'window.__quoxSharedDeps.React',
                                 'react-dom': 'window.__quoxSharedDeps.ReactDOM',
                                 'react-dom/client': 'window.__quoxSharedDeps.ReactDOM',
                                 'react-router-dom': 'window.__quoxSharedDeps.ReactRouterDOM',
+                                '@quox/glass': 'window.__quoxGlass',
                             },
                             assetFileNames: 'plugin.[ext]',
                         },
