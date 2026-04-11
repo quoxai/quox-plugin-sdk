@@ -24,3 +24,14 @@ export function registerPlugin(pluginId, exports) {
     }
     window.__quoxPluginRegister(pluginId, exports);
 }
+
+/**
+ * PSDK-2: Get the @quox/glass component library.
+ * @returns {{ AgentChatSidebar, AgentChatPanel, GlassPanel, GlassPill, ... }}
+ */
+export function getGlassComponents() {
+    if (!window.__quoxGlass) {
+        throw new Error('@quox/glass not available. Is the plugin running inside QuoxCORE v1.1+?');
+    }
+    return window.__quoxGlass;
+}

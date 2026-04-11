@@ -16,7 +16,8 @@ const path = require('path');
  * @returns {import('vite').Plugin}
  */
 function quoxPluginVite(options = {}) {
-    const { pluginId } = options;
+    const { pluginId, quoxCoreUrl } = options;
+    const coreUrl = quoxCoreUrl || process.env.QUOX_CORE_URL || 'https://localhost:3000';
 
     return {
         name: 'quox-plugin',
@@ -24,6 +25,22 @@ function quoxPluginVite(options = {}) {
 
         config(config) {
             return {
+                // PSDK-7: Dev server config — proxy to live QuoxCORE
+                server: {
+                    port: 5174,
+                    proxy: {
+                        '/collector': {
+                            target: coreUrl,
+                            changeOrigin: true,
+                            secure: false,
+                        },
+                        '/api': {
+                            target: coreUrl,
+                            changeOrigin: true,
+                            secure: false,
+                        },
+                    },
+                },
                 build: {
                     lib: {
                         entry: 'src/index.jsx',

@@ -65,7 +65,41 @@ export function setupPluginTestEnv() {
 export function teardownPluginTestEnv() {
     if (typeof window !== 'undefined') {
         delete window.__quoxSharedDeps;
+        delete window.__quoxGlass;
         delete window.__quoxPluginRegister;
         delete window.__quoxRegisteredPlugins;
+    }
+}
+
+/**
+ * PSDK-7: Mock @quox/glass components for testing.
+ * Call in setupPluginTestEnv or beforeEach.
+ */
+export function setupGlassMocks() {
+    if (typeof window !== 'undefined') {
+        const React = require('react');
+        const h = React.createElement;
+
+        // Minimal mock components that render their children
+        const mockComponent = (name) => (props) => h('div', { 'data-testid': name, ...props }, props.children);
+
+        window.__quoxGlass = {
+            AgentChatSidebar: mockComponent('AgentChatSidebar'),
+            AgentChatPanel: mockComponent('AgentChatPanel'),
+            GlassPanel: mockComponent('GlassPanel'),
+            GlassPill: mockComponent('GlassPill'),
+            GlassTabBar: mockComponent('GlassTabBar'),
+            SectionHeader: mockComponent('SectionHeader'),
+            ProgressRing: mockComponent('ProgressRing'),
+            Sparkline: mockComponent('Sparkline'),
+            GlassSkeleton: mockComponent('GlassSkeleton'),
+            GlassError: mockComponent('GlassError'),
+            MarkdownContent: mockComponent('MarkdownContent'),
+            COLORS: { purple: '#a855f7', cyan: '#38bdf8', green: '#30ff90', amber: '#f59e0b', red: '#ef4444', white: '#fff' },
+            STATUS_COLORS: { compliant: '#30ff90', partial: '#f59e0b', 'non-compliant': '#ef4444' },
+            PROTOCOL_COLORS: { AEE: '#38bdf8', AOCL: '#a855f7', VOLT: '#30ff90', WARD: '#06b6d4' },
+            M: "'JetBrains Mono',monospace",
+            F: "'Inter',sans-serif",
+        };
     }
 }
