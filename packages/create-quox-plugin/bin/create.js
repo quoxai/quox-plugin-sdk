@@ -259,6 +259,8 @@ function generateManifest(pluginName, displayName, author, description, category
             description: `Specialist security scanning agent for ${displayName}`,
             capabilities: ['scan', 'analyse', 'report', 'remediate'],
         };
+        // Delegator keywords: used by the routing layer to dispatch conversations to this agent
+        base.delegatorKeywords = ['scan', 'vulnerability', 'security', 'finding', 'remediate', 'audit', pluginName];
     }
 
     if (template === 'agentic-team') {
@@ -358,6 +360,8 @@ function generateManifest(pluginName, displayName, author, description, category
             description: t.desc,
             input_schema: { type: 'object', properties: t.props, required: t.required },
         }));
+        // Delegator keywords: used by the routing layer to dispatch conversations to this team
+        base.delegatorKeywords = ['deploy', 'rollback', 'incident', 'health', 'monitor', 'devops', pluginName];
     }
 
     return base;
@@ -402,19 +406,19 @@ function generateBasicMainView(displayName, description) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 
 export default function MainView() {
     return (
-        <div style={{
-            padding: '2rem',
-            maxWidth: '800px',
-        }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1rem' }}>
-                ${displayName}
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.7)' }}>
-                ${description}
-            </p>
+        <div style={{ padding: '2rem', maxWidth: '800px' }}>
+            <GlassPanel style={{ padding: M.lg }}>
+                <h2 style={{ color: COLORS.text.primary, marginBottom: M.md, ...F.heading }}>
+                    ${displayName}
+                </h2>
+                <p style={{ color: COLORS.text.secondary }}>
+                    ${description}
+                </p>
+            </GlassPanel>
         </div>
     );
 }
@@ -428,6 +432,7 @@ function generateMonitoringMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import { MOCK_SERVICES } from '../data/mock';
 import usePolling from '../hooks/usePolling';
 
@@ -437,6 +442,8 @@ const STATUS_COLORS = {
     down: '#ef4444',
 };
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [services, setServices] = React.useState(MOCK_SERVICES);
 
@@ -451,10 +458,11 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1000px' }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1.5rem' }}>
+            <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
                 ${displayName}
             </h2>
 
+            <GlassPanel>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -462,7 +470,7 @@ export default function MainView({ pluginApi }) {
                             <th key={h} style={{
                                 padding: '0.75rem',
                                 textAlign: 'left',
-                                color: 'rgba(255,255,255,0.6)',
+                                color: COLORS.text.muted,
                                 fontWeight: 500,
                                 fontSize: '0.85rem',
                             }}>{h}</th>
@@ -472,35 +480,28 @@ export default function MainView({ pluginApi }) {
                 <tbody>
                     {services.map(service => (
                         <tr key={service.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.primary }}>
                                 {service.name}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                                <span style={{
-                                    display: 'inline-block',
-                                    padding: '0.2rem 0.6rem',
-                                    borderRadius: '9999px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    backgroundColor: STATUS_COLORS[service.status] + '22',
-                                    color: STATUS_COLORS[service.status],
-                                }}>
+                                <GlassPill color={STATUS_COLORS[service.status]}>
                                     {service.status}
-                                </span>
+                                </GlassPill>
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>
                                 {service.responseMs}ms
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>
                                 {service.uptimePct}%
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.muted, fontSize: '0.85rem' }}>
                                 {new Date(service.lastCheck).toLocaleTimeString()}
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            </GlassPanel>
         </div>
     );
 }
@@ -514,6 +515,7 @@ function generateFleetMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import { MOCK_HOSTS } from '../data/mock';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -523,6 +525,8 @@ const STATUS_COLORS = {
     maintenance: '#f59e0b',
 };
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [hosts, setHosts] = React.useState(MOCK_HOSTS);
     const [confirmAction, setConfirmAction] = React.useState(null);
@@ -563,10 +567,11 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1.5rem' }}>
+            <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
                 ${displayName}
             </h2>
 
+            <GlassPanel>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -574,7 +579,7 @@ export default function MainView({ pluginApi }) {
                             <th key={h} style={{
                                 padding: '0.75rem',
                                 textAlign: 'left',
-                                color: 'rgba(255,255,255,0.6)',
+                                color: COLORS.text.muted,
                                 fontWeight: 500,
                                 fontSize: '0.85rem',
                             }}>{h}</th>
@@ -584,28 +589,20 @@ export default function MainView({ pluginApi }) {
                 <tbody>
                     {hosts.map(host => (
                         <tr key={host.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.primary, fontWeight: 500 }}>
                                 {host.hostname}
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary, fontFamily: 'monospace' }}>
                                 {host.ip}
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>{host.group}</td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>{host.os}</td>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>{host.group}</td>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>{host.os}</td>
                             <td style={{ padding: '0.75rem' }}>
-                                <span style={{
-                                    display: 'inline-block',
-                                    padding: '0.2rem 0.6rem',
-                                    borderRadius: '9999px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    backgroundColor: (STATUS_COLORS[host.status] || '#6b7280') + '22',
-                                    color: STATUS_COLORS[host.status] || '#6b7280',
-                                }}>
+                                <GlassPill color={STATUS_COLORS[host.status] || '#6b7280'}>
                                     {host.status}
-                                </span>
+                                </GlassPill>
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.text.muted, fontSize: '0.85rem' }}>
                                 {new Date(host.lastSeen).toLocaleString()}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
@@ -643,6 +640,7 @@ export default function MainView({ pluginApi }) {
                     ))}
                 </tbody>
             </table>
+            </GlassPanel>
 
             {confirmAction && (
                 <ConfirmModal
@@ -665,24 +663,26 @@ function generateServiceBridgeMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import { MOCK_DATA } from '../data/mock';
 import AgentSidebar from '../components/AgentSidebar';
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [data, setData] = React.useState(MOCK_DATA);
     const [showAgent, setShowAgent] = React.useState(false);
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1rem' }}>
+            <h2 style={{ color: COLORS.text.primary, marginBottom: M.md, ...F.heading }}>
                 ${displayName}
             </h2>
 
             {/* Connection Status Banner */}
-            <div style={{
+            <GlassPanel style={{
                 padding: '0.75rem 1rem',
-                marginBottom: '1.5rem',
-                borderRadius: '8px',
+                marginBottom: M.lg,
                 background: data.connected
                     ? 'rgba(16,185,129,0.1)'
                     : 'rgba(239,68,68,0.1)',
@@ -713,51 +713,35 @@ export default function MainView({ pluginApi }) {
                 >
                     &#x2728; Ask Agent
                 </button>
-            </div>
+            </GlassPanel>
 
             {/* Item Card Grid */}
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem',
+                gap: M.md,
+                marginBottom: M.lg,
             }}>
                 {data.items.map(item => (
-                    <div key={item.id} style={{
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                    }}>
-                        <h4 style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 0.5rem' }}>
+                    <GlassPanel key={item.id} style={{ padding: M.md }}>
+                        <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
                             {item.title}
                         </h4>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
+                        <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: 0 }}>
                             {item.description}
                         </p>
-                        <span style={{
-                            display: 'inline-block',
-                            marginTop: '0.5rem',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.7rem',
-                            background: 'rgba(102,126,234,0.15)',
-                            color: 'rgba(102,126,234,0.9)',
-                        }}>
+                        <GlassPill style={{ marginTop: M.sm }}>
                             {item.type}
-                        </span>
-                    </div>
+                        </GlassPill>
+                    </GlassPanel>
                 ))}
             </div>
 
             {/* Engagement Stats Row */}
-            <div style={{
+            <GlassPanel style={{
                 display: 'flex',
-                gap: '1.5rem',
-                padding: '1rem',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                gap: M.lg,
+                padding: M.md,
             }}>
                 {[
                     { label: 'Total Items', value: data.metrics.total },
@@ -765,15 +749,15 @@ export default function MainView({ pluginApi }) {
                     { label: 'Engagement', value: data.metrics.engagement + '%' },
                 ].map(stat => (
                     <div key={stat.label}>
-                        <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <div style={{ color: COLORS.text.primary, fontSize: '1.25rem', fontWeight: 600 }}>
                             {stat.value}
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
+                        <div style={{ color: COLORS.text.muted, fontSize: '0.8rem' }}>
                             {stat.label}
                         </div>
                     </div>
                 ))}
-            </div>
+            </GlassPanel>
 
             {showAgent && (
                 <AgentSidebar
@@ -795,9 +779,12 @@ function generateUiFeatureMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import { MOCK_ITEMS } from '../data/mock';
 import EmptyState from '../components/EmptyState';
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [items, setItems] = React.useState(() => {
         // Load from plugin storage if available
@@ -870,16 +857,10 @@ export default function MainView({ pluginApi }) {
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: '1rem',
+                gap: M.md,
             }}>
                 {items.map(item => (
-                    <div key={item.id} style={{
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        position: 'relative',
-                    }}>
+                    <GlassPanel key={item.id} style={{ padding: M.md, position: 'relative' }}>
                         <button
                             onClick={() => removeItem(item.id)}
                             style={{
@@ -888,17 +869,18 @@ export default function MainView({ pluginApi }) {
                                 right: '0.5rem',
                                 background: 'none',
                                 border: 'none',
-                                color: 'rgba(255,255,255,0.4)',
+                                color: COLORS.text.muted,
                                 cursor: 'pointer',
                                 fontSize: '1rem',
+                                padding: 0,
                             }}
                         >
                             &#x2715;
                         </button>
-                        <h4 style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 0.5rem' }}>
+                        <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
                             {item.title}
                         </h4>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
+                        <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
                             {item.description}
                         </p>
                         <div style={{
@@ -906,24 +888,14 @@ export default function MainView({ pluginApi }) {
                             justifyContent: 'space-between',
                             alignItems: 'center',
                         }}>
-                            <span style={{
-                                padding: '0.15rem 0.5rem',
-                                borderRadius: '9999px',
-                                fontSize: '0.7rem',
-                                background: item.status === 'active'
-                                    ? 'rgba(16,185,129,0.15)'
-                                    : 'rgba(107,114,128,0.15)',
-                                color: item.status === 'active'
-                                    ? '#10b981'
-                                    : '#6b7280',
-                            }}>
+                            <GlassPill color={item.status === 'active' ? '#10b981' : '#6b7280'}>
                                 {item.status}
-                            </span>
-                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem' }}>
+                            </GlassPill>
+                            <span style={{ color: COLORS.text.muted, fontSize: '0.7rem' }}>
                                 {new Date(item.createdAt).toLocaleDateString()}
                             </span>
                         </div>
-                    </div>
+                    </GlassPanel>
                 ))}
             </div>
         </div>
@@ -939,10 +911,13 @@ function generateEnterpriseMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import { MOCK_DATA } from '../data/mock';
 import UsageMeter from '../components/UsageMeter';
 import UpgradeGate from '../components/UpgradeGate';
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [data, setData] = React.useState(MOCK_DATA);
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -958,35 +933,21 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '0.5rem' }}>
+            <h2 style={{ color: COLORS.text.primary, marginBottom: M.sm, ...F.heading }}>
                 ${displayName}
             </h2>
 
             {/* Tier Banner + Usage Meter */}
-            <div style={{
-                padding: '1rem',
-                marginBottom: '1.5rem',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-            }}>
+            <GlassPanel style={{ padding: M.md, marginBottom: M.lg }}>
                 <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '0.75rem',
                 }}>
-                    <span style={{
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        background: 'rgba(107,114,128,0.2)',
-                        color: 'rgba(255,255,255,0.7)',
-                        textTransform: 'uppercase',
-                    }}>
+                    <GlassPill>
                         {currentTier} tier
-                    </span>
+                    </GlassPill>
                 </div>
                 <UsageMeter
                     label="Queries"
@@ -999,7 +960,7 @@ export default function MainView({ pluginApi }) {
                     limit={data.tierUsage.storageLimitMb}
                     unit="MB"
                 />
-            </div>
+            </GlassPanel>
 
             {/* Memory Search */}
             <div style={{
@@ -1039,56 +1000,46 @@ export default function MainView({ pluginApi }) {
             </div>
 
             {/* Unlocked Feature Cards */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '1rem', fontSize: '1rem' }}>
+            <h3 style={{ color: COLORS.text.secondary, marginBottom: M.md, fontSize: '1rem' }}>
                 Available Features
             </h3>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '1rem',
-                marginBottom: '2rem',
+                gap: M.md,
+                marginBottom: M.xl,
             }}>
                 {data.features.filter(f => !f.locked).map(feature => (
-                    <div key={feature.id} style={{
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                    }}>
-                        <h4 style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 0.5rem' }}>
+                    <GlassPanel key={feature.id} style={{ padding: M.md }}>
+                        <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
                             {feature.name}
                         </h4>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
+                        <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: 0 }}>
                             {feature.description}
                         </p>
-                    </div>
+                    </GlassPanel>
                 ))}
             </div>
 
             {/* Locked Feature Cards with Upgrade Gate */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '1rem', fontSize: '1rem' }}>
+            <h3 style={{ color: COLORS.text.secondary, marginBottom: M.md, fontSize: '1rem' }}>
                 Premium Features
             </h3>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '1rem',
+                gap: M.md,
             }}>
                 {data.features.filter(f => f.locked).map(feature => (
                     <UpgradeGate key={feature.id} requiredTier={feature.requiredTier}>
-                        <div style={{
-                            padding: '1rem',
-                            borderRadius: '8px',
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                        }}>
-                            <h4 style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 0.5rem' }}>
+                        <GlassPanel style={{ padding: M.md }}>
+                            <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
                                 {feature.name}
                             </h4>
-                            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
+                            <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: 0 }}>
                                 {feature.description}
                             </p>
-                        </div>
+                        </GlassPanel>
                     </UpgradeGate>
                 ))}
             </div>
@@ -2228,91 +2179,72 @@ export const toolDefinitions = [
 function generateSpecialistMainView(pluginName, displayName) {
     return `/**
  * ${displayName} — Main View
- * Agent status card, tool cards, quick action chips, and inline chat.
+ * Agent status card, tool cards, quick action chips, and AgentChatSidebar.
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F, AgentChatSidebar } = window.__quoxGlass;
+const PLUGIN_ID = '${pluginName}';
+const DISPLAY_NAME = '${displayName}';
 import AgentStatusCard from '../components/AgentStatusCard';
 import ToolCard from '../components/ToolCard';
-import AgentChat from '../components/AgentChat';
 import { MOCK_STATUS, MOCK_FINDINGS } from '../data/mock';
 import { toolDefinitions } from '../agent/tools';
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [agentStatus, setAgentStatus] = React.useState(MOCK_STATUS);
-    const [showChat, setShowChat] = React.useState(false);
+    const [collapsed, setCollapsed] = React.useState(false);
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px', height: '100%', overflow: 'hidden' }}>
+            {/* Main content pane */}
+            <div style={{ overflowY: 'auto', padding: '2rem' }}>
+                <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
                     ${displayName}
                 </h2>
-                <button
-                    onClick={() => setShowChat(!showChat)}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        background: 'rgba(245,158,11,0.15)',
-                        color: 'rgba(245,158,11,0.9)',
-                        border: '1px solid rgba(245,158,11,0.3)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                    }}
-                >
-                    &#x2728; Chat with Agent
-                </button>
+
+                {/* Agent Status Card */}
+                <AgentStatusCard status={agentStatus} />
+
+                {/* Tool Cards Row */}
+                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                    Agent Tools
+                </h3>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: M.md,
+                    marginBottom: M.lg,
+                }}>
+                    {toolDefinitions.map(tool => (
+                        <ToolCard key={tool.name} tool={tool} pluginApi={pluginApi} />
+                    ))}
+                </div>
+
+                {/* Quick Action Chips */}
+                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                    Quick Actions
+                </h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: M.sm }}>
+                    {agentStatus.suggestions.map((suggestion, i) => (
+                        <GlassPill key={i} style={{ cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
+                            {suggestion}
+                        </GlassPill>
+                    ))}
+                </div>
             </div>
 
-            {/* Agent Status Card */}
-            <AgentStatusCard status={agentStatus} />
-
-            {/* Tool Cards Row */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
-                Agent Tools
-            </h3>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-            }}>
-                {toolDefinitions.map(tool => (
-                    <ToolCard key={tool.name} tool={tool} pluginApi={pluginApi} />
-                ))}
-            </div>
-
-            {/* Quick Action Chips */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
-                Quick Actions
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {agentStatus.suggestions.map((suggestion, i) => (
-                    <button
-                        key={i}
-                        onClick={() => setShowChat(true)}
-                        style={{
-                            padding: '0.4rem 0.8rem',
-                            background: 'rgba(255,255,255,0.05)',
-                            color: 'rgba(255,255,255,0.7)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '9999px',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                        }}
-                    >
-                        {suggestion}
-                    </button>
-                ))}
-            </div>
-
-            {showChat && (
-                <AgentChat
-                    pluginApi={pluginApi}
-                    suggestions={agentStatus.suggestions}
-                    onClose={() => setShowChat(false)}
-                />
-            )}
+            {/* Agent Chat Sidebar */}
+            <AgentChatSidebar
+                agentId={PLUGIN_ID}
+                agentName={DISPLAY_NAME + ' Agent'}
+                agentColor='#f59e0b'
+                suggestions={agentStatus.suggestions}
+                collapsed={collapsed}
+                onToggle={() => setCollapsed(c => !c)}
+            />
         </div>
     );
 }
@@ -3226,6 +3158,7 @@ function generateTeamMainView(pluginName, displayName) {
  */
 
 const { React } = window.__quoxSharedDeps;
+const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
 import MemberCard from '../components/MemberCard';
 import TaskQueue from '../components/TaskQueue';
 import SharedContextPanel from '../components/SharedContextPanel';
@@ -3233,6 +3166,8 @@ import PolicyBadges from '../components/PolicyBadges';
 import { MOCK_TEAM_STATUS, MOCK_TASKS } from '../data/mock';
 import { teamDefinition } from '../team/teamDef';
 
+// pluginApi is passed as a prop by the plugin sandbox.
+// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
 export default function MainView({ pluginApi }) {
     const [teamStatus, setTeamStatus] = React.useState(MOCK_TEAM_STATUS);
     const [tasks, setTasks] = React.useState(MOCK_TASKS);
@@ -3240,8 +3175,8 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: M.md }}>
+                <h2 style={{ color: COLORS.text.primary, margin: 0, ...F.heading }}>
                     ${displayName} Team
                 </h2>
                 <button
@@ -3264,14 +3199,14 @@ export default function MainView({ pluginApi }) {
             <PolicyBadges policies={teamDefinition.policies} />
 
             {/* Member Cards Row */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+            <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                 Team Members
             </h3>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem',
+                gap: M.md,
+                marginBottom: M.lg,
             }}>
                 {teamStatus.members.map(member => (
                     <MemberCard key={member.id} member={member} />
@@ -3279,31 +3214,20 @@ export default function MainView({ pluginApi }) {
             </div>
 
             {/* Task Queue */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+            <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                 Task Queue
             </h3>
             <TaskQueue tasks={tasks} />
 
             {/* Quick Actions */}
-            <h3 style={{ color: 'rgba(255,255,255,0.8)', margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+            <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                 Quick Actions
             </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: M.sm }}>
                 {['Deploy latest to staging', 'Check all service health', 'View team metrics', 'Create incident report'].map((action, i) => (
-                    <button
-                        key={i}
-                        style={{
-                            padding: '0.4rem 0.8rem',
-                            background: 'rgba(255,255,255,0.05)',
-                            color: 'rgba(255,255,255,0.7)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '9999px',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                        }}
-                    >
+                    <GlassPill key={i} style={{ cursor: 'pointer' }}>
                         {action}
-                    </button>
+                    </GlassPill>
                 ))}
             </div>
 
