@@ -150,6 +150,44 @@ Events are recorded in the AEE store and visible in the Activity view.
 
 **Requires:** `aee` permission in manifest.
 
+## File Storage (FU-1)
+
+QuoxCORE ships a unified file store (the **file_objects** service) that every plugin can read from and write to. Files are org-scoped, content-addressed (SHA-256 dedup within an org), and persist independent of any individual plugin — QuoxChat knowledge uploads, NanoBanana generated images, and user uploads via the Files plugin all land in the same store.
+
+Plugins interact with it through three pieces shipped by the core:
+
+**`useFileService({ authFetch, orgId })`** — feature-detection hook. Returns `{ loading, available, uploadEndpoint, listEndpoint, maxSize }`. Call it at mount; render conditional UI based on `available`.
+
+**`<FileDropZone />`** (from `src/components/files/shared/FileDropZone`) — accessible drag-drop + click-browse zone. Props: `accept`, `maxSize`, `multiple`, `onFiles(files)`. Handles validation; rejected files never reach your callback.
+
+**`<FilePicker />`** (from `src/components/files/shared/FilePicker`) — modal browser over `GET /api/orgs/:orgId/files`. Props: `authFetch`, `orgId`, `namespacePrefix`, `onPick(file)`. Use `namespacePrefix` to scope the list (e.g. `quoxchat/wgt_xxx/` to only show that widget's knowledge files).
+
+**Direct API client** (`src/services/fileObjectsClient.js`):
+
+```js
+import { upload, list, get, download, rename, remove } from 'src/services/fileObjectsClient'
+
+const uploaded = await upload({
+  authFetch, orgId: currentOrg.id,
+  namespace: 'my-plugin',              // free-form string, no leading slash
+  file: someFile,                      // File object
+  sourcePlugin: 'my-plugin',           // surfaces in Files UI as "from my-plugin"
+  sourceRef: 'message_01jxxxx',        // optional link back to your own entity
+  metadata: { category: 'invoice' },   // arbitrary JSON blob
+})
+// → { id, org_id, namespace, virtual_path, sha256, blob_path, ... }
+
+const { items, pagination } = await list({
+  authFetch, orgId, namespacePrefix: 'my-plugin', limit: 50,
+})
+```
+
+**Namespacing convention:** pick a stable prefix for your plugin — use the plugin id (`my-plugin`) for general files, or scope further (`my-plugin/<entity_id>/<subfolder>`) when you need isolation within a plugin. This is what lets `<FilePicker namespacePrefix="my-plugin/">` scope correctly.
+
+**Auth + permissions:** reads go through `requireAuth` + `requireOrgMembership`. Cross-org reads return 403. Pass `authFetch` from `useAuth()` — never bare `fetch`.
+
+**File size limit:** 25 MB default (`DEFAULT_MAX_SIZE` from `useFileService`). Server enforces the same cap; override per-plugin by tightening the hook's `maxSize` prop.
+
 ## Error Handling
 
 All API methods are safe to call — they won't crash your plugin. Network errors are caught and logged. If the collector is unreachable, `fetch`, `memory`, and `aee` methods will return error responses rather than throwing.
