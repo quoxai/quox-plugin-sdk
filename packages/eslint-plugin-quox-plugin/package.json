@@ -1,0 +1,22 @@
+{
+  "name": "eslint-plugin-quox-plugin",
+  "version": "0.1.0",
+  "description": "ESLint rules for QuoxCORE plugin authors. Catches localStorage-as-primary-store mistakes at build time.",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "eslint": ">=8"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": ["eslint", "eslint-plugin", "quox", "plugin"],
+  "license": "MIT"
+}

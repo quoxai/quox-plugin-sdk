@@ -16,6 +16,57 @@ describe('testing utilities', () => {
             expect(api.pluginId).toBe('my-plugin');
         });
 
+        it('cache get/set/remove/keys work correctly (PD-6)', () => {
+            const api = createMockPluginApi();
+
+            expect(api.cache.get('missing')).toBeNull();
+            expect(api.cache.keys()).toEqual([]);
+
+            api.cache.set('a', 1);
+            api.cache.set('b', { x: 2 });
+
+            expect(api.cache.get('a')).toBe(1);
+            expect(api.cache.get('b')).toEqual({ x: 2 });
+            expect(api.cache.keys().sort()).toEqual(['a', 'b']);
+
+            api.cache.remove('a');
+            expect(api.cache.get('a')).toBeNull();
+        });
+
+        it('storage is a deprecated alias of cache (PD-6)', () => {
+            const api = createMockPluginApi();
+            api.cache.set('shared', 'via-cache');
+            expect(api.storage.get('shared')).toBe('via-cache');
+            api.storage.set('via-storage', 42);
+            expect(api.cache.get('via-storage')).toBe(42);
+        });
+
+        it('durable get/set/remove/keys round-trip with org and user scopes (PD-3)', async () => {
+            const api = createMockPluginApi();
+
+            await api.durable.set('k1', { count: 5 });
+            await api.durable.set('k2', 'two');
+            expect(await api.durable.get('k1')).toEqual({ count: 5 });
+            expect(await api.durable.keys()).toEqual(['k1', 'k2']);
+
+            await api.durable.set('pref', 'X-pref', { scope: 'user' });
+            expect(await api.durable.get('pref', { scope: 'user' })).toBe('X-pref');
+            expect(await api.durable.get('pref')).toBeNull();
+
+            await api.durable.remove('k1');
+            expect(await api.durable.get('k1')).toBeNull();
+        });
+
+        it('secrets list/set/get/remove (PD-4)', async () => {
+            const api = createMockPluginApi();
+            expect(await api.secrets.list()).toEqual([]);
+            await api.secrets.set('token', 'plaintext');
+            expect(await api.secrets.list()).toEqual(['token']);
+            expect(await api.secrets.get('token')).toBe('plaintext');
+            await api.secrets.remove('token');
+            expect(await api.secrets.get('token')).toBeNull();
+        });
+
         it('storage get/set/remove/keys work correctly', () => {
             const api = createMockPluginApi();
 

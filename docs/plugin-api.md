@@ -31,26 +31,76 @@ console.log(api.pluginId); // "my-plugin"
 
 ---
 
-### `api.storage`
+## Persistence — pick the right primitive
 
-Scoped key-value storage in the browser's localStorage. All keys are automatically namespaced to your plugin — you cannot access other plugins' data.
+Three primitives, three jobs. Picking the wrong one is how plugins lose user data.
+
+| API | Where it lives | Survives browser reset? | Cross-device? | Use for |
+|---|---|---|---|---|
+| `api.cache` | Browser localStorage (this device only) | ❌ | ❌ | Transient UI state, last-tab, scroll position |
+| `api.durable` | Server (auth.db, org-scoped) | ✅ | ✅ | Anything the user expects to keep |
+| `api.secrets` | Server, encrypted at rest | ✅ | ✅ | Tokens, API keys, credentials |
+
+**Rule of thumb:** if the user typed it, picked it, or generated it — `durable` or `secrets`. If it's a short-lived UI hint that's fine to lose — `cache`.
+
+---
+
+### `api.cache`
+
+Plugin-namespaced browser cache. Backed by localStorage on this device only — not synced, not durable. The runtime warns once per session if a plugin uses `cache` without also using `durable` or `memory`.
 
 ```js
-// Store a value
-api.storage.set('lastScan', { timestamp: Date.now(), results: 42 });
-
-// Retrieve a value (returns null if not found)
-const lastScan = api.storage.get('lastScan');
-
-// Remove a value
-api.storage.remove('lastScan');
-
-// List all keys (your plugin's keys only)
-const keys = api.storage.keys();
-// ['lastScan', 'settings', 'cache']
+api.cache.set('lastTab', 'overview');
+const tab = api.cache.get('lastTab');   // null if not set
+api.cache.remove('lastTab');
+const keys = api.cache.keys();          // ['lastTab', ...]
 ```
 
-**Limits:** localStorage is limited to ~5MB per origin. Keep stored data small.
+**Limits:** ~5 MB per origin shared with all plugins on this device. Keep entries small.
+
+> **`api.storage` is a deprecated alias of `api.cache`.** It will be removed in
+> a future minor release. Existing plugins keep working; new plugins should
+> use `api.cache` directly.
+
+---
+
+### `api.durable`
+
+Server-backed durable KV. Org-scoped by default; pass `{ scope: 'user' }` for per-user data. Reads and writes are HTTPS round-trips, so prefer batching for hot paths.
+
+```js
+// Org-scoped — every member of the org sees the same value
+await api.durable.set('repo_count', 42);
+const n = await api.durable.get('repo_count');
+
+// User-scoped — only the calling user
+await api.durable.set('view_pref', 'compact', { scope: 'user' });
+const pref = await api.durable.get('view_pref', { scope: 'user' });
+
+await api.durable.remove('repo_count');
+const keys = await api.durable.keys();   // ['repo_count', ...]
+```
+
+Survives container rebuilds, browser cache clears, private windows, device switches, and is included in backups automatically.
+
+---
+
+### `api.secrets`
+
+Per-plugin encrypted secrets vault. Plaintext is returned only by `get()`, and every read emits a `plugin.secret_accessed` audit row. `set()` and `remove()` require org-admin role; `get()` and `list()` are available to any org member so plugins can read their own credentials at runtime.
+
+```js
+// Admin sets the secret once via the plugin's setup UI
+await api.secrets.set('github_token', 'ghp_xxx', { description: 'GitHub PAT' });
+
+// Plugin reads at runtime — server decrypts, audit logged
+const token = await api.secrets.get('github_token');
+
+await api.secrets.list();                // ['github_token', ...]
+await api.secrets.remove('github_token');
+```
+
+The database stores only AES-256-GCM ciphertext; plaintext never crosses an unauthenticated boundary.
 
 ---
 

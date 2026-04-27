@@ -11,15 +11,46 @@
  * @returns {import('./types').PluginAPI}
  */
 export function createMockPluginApi(pluginId = 'test-plugin') {
-    const storage = new Map();
+    const cacheStore = new Map();
+    const durableStore = new Map(); // key includes scope
+    const secretsStore = new Map();
+
+    function durableKey(scope, key) { return `${scope}:${key}`; }
+
+    const cache = {
+        get(key) { return cacheStore.get(key) ?? null; },
+        set(key, value) { cacheStore.set(key, value); },
+        remove(key) { cacheStore.delete(key); },
+        keys() { return [...cacheStore.keys()]; },
+    };
 
     return {
         pluginId,
-        storage: {
-            get(key) { return storage.get(key) ?? null; },
-            set(key, value) { storage.set(key, value); },
-            remove(key) { storage.delete(key); },
-            keys() { return [...storage.keys()]; },
+        cache,
+        // Deprecated alias kept for plugins not yet migrated.
+        storage: cache,
+        durable: {
+            async get(key, opts = {}) {
+                return durableStore.get(durableKey(opts.scope || 'org', key)) ?? null;
+            },
+            async set(key, value, opts = {}) {
+                durableStore.set(durableKey(opts.scope || 'org', key), value);
+            },
+            async remove(key, opts = {}) {
+                durableStore.delete(durableKey(opts.scope || 'org', key));
+            },
+            async keys(opts = {}) {
+                const prefix = `${opts.scope || 'org'}:`;
+                return [...durableStore.keys()]
+                    .filter(k => k.startsWith(prefix))
+                    .map(k => k.slice(prefix.length));
+            },
+        },
+        secrets: {
+            async list() { return [...secretsStore.keys()]; },
+            async get(name) { return secretsStore.has(name) ? secretsStore.get(name) : null; },
+            async set(name, value) { secretsStore.set(name, value); },
+            async remove(name) { secretsStore.delete(name); },
         },
         config: {
             get() { return {}; },

@@ -243,19 +243,66 @@ export interface PluginExports {
     routes?: Record<string, React.ComponentType>;
     sidebar?: SidebarItem[];
     hooks?: {
-        onActivate?: () => void;
-        onDeactivate?: () => void;
+        // DOM lifecycle (stable, fire on every page load)
+        onActivate?: (api: PluginAPI) => void | Promise<void>;
+        onDeactivate?: () => void | Promise<void>;
+        // PD-5 install lifecycle (fire once per org-level boundary)
+        onInstall?: (api: PluginAPI, ctx: { manifestVersion: string }) => void | Promise<void>;
+        onUpgrade?: (api: PluginAPI, ctx: { fromVersion: string | null; toVersion: string }) => void | Promise<void>;
+        onUninstall?: (api: PluginAPI, ctx: { deleteData: boolean }) => void | Promise<void>;
+        // Reserved — wired up when backup/restore integration lands.
+        onRestore?: (api: PluginAPI, ctx: { backupSnapshot: unknown }) => void | Promise<void>;
     };
 }
 
+/**
+ * Plugin runtime API.
+ *
+ * Persistence model:
+ *   - api.cache    — browser-only, ephemeral. NOT durable. Use for UI state.
+ *   - api.durable  — server-backed, org/user scoped, survives all browser
+ *                    state resets and syncs across devices. Default for
+ *                    anything a user expects to persist.
+ *   - api.secrets  — encrypted at rest server-side. Plaintext returned only
+ *                    via api.secrets.get() and audit-logged.
+ *   - api.memory   — long-form facts/observations into the QuoxCORE memory
+ *                    service.
+ *
+ * `api.storage` is preserved as a deprecated alias of `api.cache` for one
+ * minor release. New plugins must use `api.cache` (for UI state) or
+ * `api.durable` (for anything that should survive). Future SDK versions
+ * remove `api.storage` entirely.
+ */
 export interface PluginAPI {
     pluginId: string;
-    storage: {
+
+    /** Browser-only namespaced KV. Ephemeral — never use as the only store. */
+    cache: {
         get(key: string): any;
         set(key: string, value: any): void;
         remove(key: string): void;
         keys(): string[];
     };
+
+    /** @deprecated Use `api.cache` (UI state) or `api.durable` (persistent data). */
+    storage: PluginAPI['cache'];
+
+    /** Server-backed durable KV — org-scoped by default; pass scope:'user' for per-user. */
+    durable: {
+        get(key: string, opts?: { scope?: 'org' | 'user' }): Promise<any>;
+        set(key: string, value: any, opts?: { scope?: 'org' | 'user' }): Promise<void>;
+        remove(key: string, opts?: { scope?: 'org' | 'user' }): Promise<void>;
+        keys(opts?: { scope?: 'org' | 'user' }): Promise<string[]>;
+    };
+
+    /** Per-plugin encrypted secrets vault. Plaintext only via get(); reads audit. */
+    secrets: {
+        list(): Promise<string[]>;
+        get(name: string): Promise<string | null>;
+        set(name: string, value: string, opts?: { description?: string }): Promise<void>;
+        remove(name: string): Promise<void>;
+    };
+
     config: {
         get(): Record<string, any>;
         save(config: Record<string, any>): void;
@@ -281,5 +328,6 @@ declare global {
     interface Window {
         __quoxSharedDeps: SharedDeps;
         __quoxPluginRegister: (pluginId: string, exports: PluginExports) => void;
+        __quoxPluginApi: Record<string, PluginAPI>;
     }
 }
