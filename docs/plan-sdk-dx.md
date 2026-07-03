@@ -79,3 +79,21 @@ manifest→chat-able-agent path; getting-started.md gains the dev loop.
 ## Decisions log
 - 2026-07-03 — Stream approved; roadmap entry SDK-DX added (IN_PROGRESS).
   Order: P1 → P3 → P4 → P2.
+- 2026-07-03 — P1 live verification found + fixed 6 harness bugs (fs.allow
+  lockout, dev-mode externals, raw-served client, proxy/port clobbering,
+  unwired CSS, missing react-refresh preamble) and added the virtual
+  bootstrap + router-shim designs. Scaffold verified rendering framed with
+  agent placeholder; star-alignment verified but stays build-only until
+  RES.2 (framed = unstyled, its styles are dev-only).
+- 2026-07-03 — Harness caught two shipping-blockers on first use: templates
+  reference unpublished npm names (couldn't install), and specialist-agent's
+  token shapes would crash in the real host (P3b, fixed same day).
+- 2026-07-03 — npm publish DEFERRED to launch (Adam: "nobody needs it yet").
+  Scaffolder emits absolute file: paths to the local SDK checkout when
+  present; registry semvers once published. Publish prep done (metadata,
+  clean pack dry-runs; names verified free).
+- 2026-07-03 — P2 shipped; PluginAPI type/mocks extended with the PSDK-4
+  surfaces (navigate/getUser/chat) after the docs pass exposed the gap.
+- Known pre-existing flake (NOT this stream): eslint-plugin-quox-plugin's
+  no-cache-as-primary-storage.test.js uses node:test, vitest intermittently
+  reports "No test suite found". All real tests green.

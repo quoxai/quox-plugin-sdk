@@ -153,7 +153,41 @@ QuoxCORE uses a dark theme. Follow these guidelines:
 - **Borders:** `rgba(255,255,255,0.1)` for subtle borders
 - **Minimum opacity:** Never below 0.6 for text/icons on dark backgrounds
 
-## Step 4: Build
+## Step 4: Run the Dev Preview
+
+Before building and installing a ZIP for every change, iterate locally:
+
+```bash
+npm run dev
+```
+
+This starts a Vite dev server (port 5174 by default, unless your `vite.config.js` or the CLI sets its own) with a **framed host preview** — `quox-plugin-vite`'s dev host harness. It approximates enough of QuoxCORE's `AppShell` that a scaffolded plugin renders immediately instead of throwing on a blank page:
+
+- A **76px left icon rail** built from `manifest.sidebar`, a **64px top header**, and a content area sized like `.app-shell__content`.
+- A `HashRouter` (`react-router-dom`, or a small built-in hash-router shim if your project hasn't installed it) wired over whatever `routes` your entry passes to `window.__quoxPluginRegister`.
+- `window.__quoxSharedDeps` — your project's own `react`/`react-dom`/`react-router-dom` instances (**not** a bundled copy — see the devDependency note below).
+- `window.__quoxGlass` — functional dev versions of the glass component library (working `GlassTabBar`, `GlassPanel`, etc.). `AgentChatPanel`/`AgentChatSidebar` render an honest **"dev preview — live agent runs inside QuoxCORE"** placeholder with a disabled input, not a real conversation.
+- `window.__quoxPluginApi` — an in-memory mock (`cache`/`durable`/`secrets` back onto plain `Map`s that reset every page reload; `fetch()` always resolves `{}`). One `console.info('[quox-dev-host] mock pluginApi active')` marks it as non-production.
+- The real, vendored `qx-components.css` served at `/__quox-dev/qx.css` — so `.qx-*` classes render correctly without your plugin shipping them.
+- Your parsed `manifest.json`, served at `/__quox-dev/manifest.js` as `window.__quoxDevManifest`.
+
+If the frame shows **"quox-dev-host: no plugin registered"**, your entry module hasn't called `window.__quoxPluginRegister(...)` yet — check the browser console for a build/import error in `src/index.jsx`.
+
+**devDependency requirement:** the dev host resolves `react`/`react-dom` (and `react-router-dom`, if present) from **your project's own** `node_modules`, not from the SDK. `create-quox-plugin` scaffolds already add `react` and `react-dom` as devDependencies (see the generated `package.json`) — don't remove them.
+
+**Escape hatches** — for plugins that already have their own standalone dev fallback, or want the raw Vite page with nothing injected:
+- **`?bare=1`** URL query param (e.g. `http://localhost:5174/?bare=1`) — skips installing all the `window.__quox*` globals and skips mounting the frame; only your entry module runs.
+- **`devHost: false`** plugin option in `vite.config.js`:
+  ```js
+  quoxPluginVite({ pluginId: 'my-first-plugin', devHost: false })
+  ```
+  Disables the harness entirely at the Vite-plugin level — nothing is injected, no `/__quox-dev/*` routes are registered.
+
+**Refreshing the vendored glass CSS:** `qx-components.css` is snapshotted into `quox-plugin-vite`'s own `assets/` directory so plugin authors don't need a sibling `quox-dashboard` checkout. This is an **SDK-maintainer** task, not something typical plugin authors run — if you're working on the SDK itself and `quox-dashboard`'s `qx-components.css` has changed, re-vendor it with `npm run sync-glass-css` from `packages/quox-plugin-vite`.
+
+**Honest limits of the dev preview:** it's a *visual and prop-plumbing* approximation, not a QuoxCORE instance. There's no real agent behind `AgentChatPanel`/`AgentChatSidebar`, no server-backed `api.durable`/`api.secrets`, and `api.fetch()` never reaches a real collector. Validate persistence, chat, and backend calls by building and installing into a running QuoxCORE (next step).
+
+## Step 5: Build
 
 ```bash
 npm run build
@@ -161,7 +195,7 @@ npm run build
 
 This produces `my-first-plugin.quoxplugin` in the project root — a ZIP file ready for installation.
 
-## Step 5: Install in QuoxCORE
+## Step 6: Install in QuoxCORE
 
 1. Open QuoxCORE in your browser
 2. Go to **Settings** (sidebar or keyboard shortcut `9`)
@@ -174,9 +208,11 @@ This produces `my-first-plugin.quoxplugin` in the project root — a ZIP file re
 
 Your plugin now appears in the sidebar and the community plugins section.
 
-## Step 6: Iterate
+## Step 7: Iterate
 
-To update your plugin in QuoxCORE:
+For UI/logic changes, prefer looping on **Step 4 (`npm run dev`)** — it's instant and doesn't require reinstalling. Rebuild and reinstall into QuoxCORE (Steps 5–6) when you need to verify something the dev preview can't fake: real agent chat, server-backed `api.durable`/`api.secrets`, or actual backend calls through `api.fetch()`.
+
+To update an already-installed plugin in QuoxCORE:
 
 1. Make changes to your source code
 2. Run `npm run build` again

@@ -200,6 +200,35 @@ Events are recorded in the AEE store and visible in the Activity view.
 
 **Requires:** `aee` permission in manifest.
 
+---
+
+### `api.chat`
+
+Open QuoxCORE's real agent chat UI, docked to the right side of the app shell.
+
+```js
+api.chat.openSidebar('sentinel', {
+    agentName: 'SENTINEL',
+    agentColor: '#30ff90',
+    additionalContext: 'User is viewing the network scan results for 10.0.0.0/24.',
+    width: 360, // optional — this is also the dock's own default
+});
+```
+
+**What it does:** `openSidebar(agentId, options)` dispatches a `quox-open-agent-chat` `CustomEvent` on `window` with `{ agentId, ...options }`. QuoxCORE's `AppShell` listens for that event (SDK-DX P4) and mounts a right-side `AgentChatPanel` dock (`.app-shell__agent-dock`) — a **live, working agent conversation**, not a mock. `options` (`agentName`, `agentColor`, `additionalContext`, `width`) are passed straight through to `AgentChatPanel` — see [`AgentChatPanelProps`](../packages/quox-plugin-sdk/src/types.d.ts).
+
+Close it programmatically by dispatching the matching close event:
+
+```js
+window.dispatchEvent(new CustomEvent('quox-close-agent-chat'));
+```
+
+The user can also collapse the dock to a 48px rail or close it from its own header controls.
+
+**`agentId` must resolve to a real agent** — a core QuoxCORE agent id, or one your plugin registered from `manifest.agentDefinition` / `manifest.agentPersona` (see [Registering a chat-able agent from manifest.json](#registering-a-chat-able-agent-from-manifestjson) below). Passing an id nothing has registered opens the dock UI but there is no agent behind it to answer.
+
+**Requires:** no explicit `manifest.permissions` entry today — `chat.openSidebar` is unconditionally available on `api`. If you want a *specific* agent to appear, that agent must exist first.
+
 ## File Storage (FU-1)
 
 QuoxCORE ships a unified file store (the **file_objects** service) that every plugin can read from and write to. Files are org-scoped, content-addressed (SHA-256 dedup within an org), and persist independent of any individual plugin — QuoxChat knowledge uploads, NanoBanana generated images, and user uploads via the Files plugin all land in the same store.
@@ -238,6 +267,157 @@ const { items, pagination } = await list({
 
 **File size limit:** 25 MB default (`DEFAULT_MAX_SIZE` from `useFileService`). Server enforces the same cap; override per-plugin by tightening the hook's `maxSize` prop.
 
+## `__quoxGlass` component library
+
+QuoxCORE injects a library of ready-made glass-design-system components onto `window.__quoxGlass` before your plugin's entry module runs (`initPluginHost()`, PSDK-2). Use them so your plugin's UI matches the rest of the app instead of hand-rolling cards, pills, and chat panels.
+
+**Availability:**
+
+| Context | Source | Fidelity |
+|---|---|---|
+| Production (installed `.quoxplugin`) | `thirdPartyPluginHost.js` exports the real quox-dashboard components | Full — same components the core app uses |
+| `npm run dev` (quox-plugin-vite dev host, P1) | `dev-host/client.js` installs a **functional but simplified** approximation under the same names | Partial — see caveats below |
+| Unit tests (`quox-plugin-sdk/testing`) | `setupGlassMocks()` installs `data-testid`-only stub components | Structural only — asserts wiring, not visuals |
+
+### `getGlassComponents()`
+
+```js
+import { getGlassComponents } from 'quox-plugin-sdk';
+
+const { GlassPanel, GlassPill, AgentChatSidebar, COLORS } = getGlassComponents();
+```
+
+Throws `"@quox/glass not available. Is the plugin running inside QuoxCORE v1.1+?"` if `window.__quoxGlass` isn't present yet — call it from inside a component/hook, not at module top level. Equivalent to reading `window.__quoxGlass` directly (what the entry-point examples elsewhere in this doc do), just with the missing-global error message built in.
+
+### What's available
+
+- **Chat patterns:** `AgentChatSidebar` (lightweight, docked sidebar chat — the same primitive behind 14+ built-in `*ChatSidebar.jsx` surfaces), `AgentChatPanel` (fuller multi-tab chat panel with a 48px collapsed rail). Both take an `agentId` and render nothing useful until that id resolves to a registered agent — see [Registering a chat-able agent](#registering-a-chat-able-agent-from-manifestjson) below.
+- **Glass primitives:** `GlassPanel`, `GlassPill`, `GlassTabBar`, `SectionHeader`, `ProgressRing`, `Sparkline`, `GlassSkeleton`, `GlassError`.
+- **Design tokens:** `COLORS`, `STATUS_COLORS`, `PROTOCOL_COLORS` (color hex values), `M` (monospace font stack), `F` (sans-serif font stack).
+- **Content rendering:** `MarkdownContent` — the same markdown renderer (`react-markdown` + `remark-gfm`) used throughout QuoxCORE.
+
+Full prop types for every component are in [`packages/quox-plugin-sdk/src/types.d.ts`](../packages/quox-plugin-sdk/src/types.d.ts) (`QuoxGlassComponents` and friends), typed against the production implementations.
+
+### AgentChatPanel / AgentChatSidebar usage — collapsible grid pattern
+
+The canonical layout for a plugin view with a docked agent chat is a two-column CSS grid that collapses the chat column to 48px:
+
+```jsx
+const { GlassPanel, AgentChatSidebar } = window.__quoxGlass;
+const { useState } = window.__quoxSharedDeps.React;
+
+export default function MainView() {
+    const [collapsed, setCollapsed] = useState(false);
+
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px',
+            gap: 12,
+            height: '100%',
+        }}>
+            <div style={{ overflow: 'auto', padding: 16 }}>
+                <GlassPanel>
+                    <p>Your plugin's main content goes here.</p>
+                </GlassPanel>
+            </div>
+
+            <AgentChatSidebar
+                agentId="my-plugin"
+                agentName="MY-PLUGIN"
+                agentColor="#38bdf8"
+                collapsed={collapsed}
+                onToggle={() => setCollapsed((c) => !c)}
+                suggestions={['What changed today?', 'Summarize the last scan']}
+            />
+        </div>
+    );
+}
+```
+
+This is the `1fr 340px` ↔ `1fr 48px` grid pattern used by the `specialist-agent` template — prefer it over `position: fixed` overlays.
+
+### Honest caveats — dev vs. production
+
+- **`npm run dev`'s `AgentChatPanel`/`AgentChatSidebar` are NOT live agents.** The dev host renders a static "dev preview — live agent runs inside QuoxCORE" placeholder with a disabled input. Prop plumbing (collapse/expand, header content, width) works; there is no chat behind it. Real chat only exists once the plugin is installed inside a running QuoxCORE (or via `api.chat.openSidebar`, see below).
+- **`window.__quoxPluginApi` in dev is an in-memory mock**, not the real server-backed `api.durable`/`api.secrets`. `api.durable`/`api.secrets` resolve against `Map`s that reset on every page reload — nothing persists across a dev-server restart. `api.fetch()` always returns `{}`. Use this to prove out UI wiring, not to test persistence.
+- **Some dev-mock component props are simplified relative to production** — e.g. the dev `GlassPanel` only understands `title`/`className`/children, while the production `GlassPanel` also supports `highlight`, `hoverable`, and `onClick`. The dev host is a best-effort visual approximation, not a byte-for-byte reimplementation; always sanity-check the real thing by installing a build inside QuoxCORE before shipping.
+
+## Registering a chat-able agent from manifest.json
+
+A plugin can register a real, chat-able QuoxCORE agent — one that appears in `AgentChatPanel`/`AgentChatSidebar`, can be delegated to by CommanderQ, and is reachable via `api.chat.openSidebar()` — purely by declaring it in `manifest.json`. No extra runtime code is required; `thirdPartyPluginHost.js` reads these fields at **activation** time (`activateThirdPartyPlugin()`, PSDK-3) and tears the registration down again at **deactivation** (`deactivateThirdPartyPlugin()`) — nothing lingers in the agent registry after your plugin is disabled or uninstalled.
+
+Three optional top-level manifest fields, all independent:
+
+| Field | Registered into | Effect |
+|---|---|---|
+| `agentDefinition` | `agentRegistry.agents[id]` + `agentRegistry.hierarchy.pluginAgents` + CommanderQ's `canDelegateTo` list | Makes the agent a delegation target and gives it capabilities/tools/autonomy metadata |
+| `agentPersona` | `assistants[id]` (via `entityRegistry`'s `getAssistant()`) | Gives the agent a name/color/voice/system-prompt so `AgentChatPanel`/`AgentChatSidebar` can render and chat with it |
+| `delegatorKeywords` | `agentDelegator`'s keyword table, keyed by `agentDefinition.id \|\| pluginId` | Lets CommanderQ route free-text queries to your agent by keyword match |
+
+In practice you want **`agentPersona` at minimum** (for chat to render sensibly) and usually `agentDefinition` too (to be delegation-reachable from CommanderQ, not just directly via `api.chat.openSidebar`).
+
+### Minimal worked example
+
+```jsonc
+// manifest.json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "agentPersona": {
+    "id": "my-plugin",
+    "name": "MY-PLUGIN",
+    "shortName": "MYPLG",
+    "voice": "american-male-1",
+    "color": "#38bdf8",
+    "colorRgb": "56,189,248",
+    "specialty": "Network scan triage",
+    "description": "Summarizes and prioritizes findings from My Plugin's scans.",
+    "llm": { "provider": "anthropic", "model": "claude-sonnet-4-5", "temperature": 0.4, "maxTokens": 2048 },
+    "systemPrompt": "You are MY-PLUGIN, a specialist that explains network scan results in plain language."
+  },
+  "agentDefinition": {
+    "id": "my-plugin",
+    "name": "MY-PLUGIN",
+    "role": "specialist",
+    "level": 2,
+    "domain": "network-scanning",
+    "description": "Summarizes and prioritizes findings from My Plugin's scans.",
+    "systemPrompt": "You are MY-PLUGIN, a specialist that explains network scan results in plain language.",
+    "personality": { "tone": "concise", "verbosity": "medium", "formality": "professional", "traits": ["precise", "helpful"] },
+    "capabilities": ["scan_summary", "risk_triage"],
+    "tools": [],
+    "defconLevel": "GREEN",
+    "autonomy": {
+      "canRunAutonomously": false,
+      "budget": { "maxTokensPerRun": 20000, "maxToolCallsPerRun": 10, "maxDurationMs": 60000, "maxDailyRuns": 50 },
+      "escalation": { "onHighRisk": "ESCALATE", "onBudgetWarning": "ESCALATE", "onFailure": "ESCALATE", "maxRetries": 1 }
+    },
+    "suggestions": ["Summarize the last scan", "What's my highest-risk host?"]
+  },
+  "delegatorKeywords": ["network scan", "port scan", "vulnerability triage"]
+}
+```
+
+With this in place, once the plugin is installed and activated:
+
+```jsx
+const { AgentChatSidebar } = window.__quoxGlass;
+// renders a real, working chat with MY-PLUGIN
+<AgentChatSidebar agentId="my-plugin" agentName="MY-PLUGIN" agentColor="#38bdf8" />
+```
+
+```js
+// from anywhere else in QuoxCORE (or your own plugin code)
+window.__quoxPluginApi['my-plugin'].chat.openSidebar('my-plugin');
+```
+
+**Notes on the real behavior, not the aspiration:**
+- `ownership` on `agentDefinition` is set by the host itself (`{ source: 'plugin', plugin: pluginId }`) — don't bother declaring it, it's overwritten on activation.
+- `agentDefinition.id` (falling back to your plugin's own `id`) is the key used for `agentRegistry`, delegator keywords, **and** teardown on deactivate — keep `agentPersona.id` in sync with it if you declare both, or the two registrations can key differently and the chat/delegation experience gets inconsistent.
+- None of this is validated against `AgentDefinition`/`AgentPersona`'s full TypeScript shape at runtime — the host duck-types whatever you provide straight into the registries. The full field lists in [`types.d.ts`](../packages/quox-plugin-sdk/src/types.d.ts) describe the complete schema (budgets, escalation policy, etc.) for agents that want autonomous runs; a chat-only agent can omit most of it.
+
 ## Error Handling
 
 All API methods are safe to call — they won't crash your plugin. Network errors are caught and logged. If the collector is unreachable, `fetch`, `memory`, and `aee` methods will return error responses rather than throwing.
@@ -262,4 +442,17 @@ expect(res.status).toBe(200);
 // memory and aee return success
 const result = await api.memory.save({ type: 'fact', content: 'test' });
 expect(result.success).toBe(true);
+```
+
+There's also a `setupGlassMocks()` helper for components that consume `window.__quoxGlass`:
+
+```js
+import { setupGlassMocks, teardownPluginTestEnv } from 'quox-plugin-sdk/testing';
+
+beforeEach(() => setupGlassMocks());
+afterEach(() => teardownPluginTestEnv());
+
+// window.__quoxGlass.GlassPanel etc. now render minimal
+// <div data-testid="GlassPanel">{children}</div> stand-ins — good for
+// asserting your component renders/wires props, not for visual testing.
 ```
