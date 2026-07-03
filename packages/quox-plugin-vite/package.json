@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Vite plugin for building QuoxCORE third-party plugins",
   "main": "src/index.js",
+  "scripts": {
+    "sync-glass-css": "node scripts/sync-glass-css.mjs"
+  },
   "keywords": ["quox", "plugin", "vite"],
   "peerDependencies": {
     "vite": ">=5.0.0"
