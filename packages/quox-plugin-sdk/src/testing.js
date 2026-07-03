@@ -65,6 +65,14 @@ export function createMockPluginApi(pluginId = 'test-plugin') {
         aee: {
             async emit() { return { success: true }; },
         },
+        // PSDK-4 surfaces (mirrors PluginSandbox.createPluginApi)
+        navigate() {},
+        getUser() {
+            return { userId: null, orgId: null, role: 'viewer', tier: 'free' };
+        },
+        chat: {
+            openSidebar() {},
+        },
     };
 }
 

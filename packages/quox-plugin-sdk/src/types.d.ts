@@ -316,6 +316,21 @@ export interface PluginAPI {
     aee: {
         emit(intent: string, payload: any): Promise<any>;
     };
+
+    /** PSDK-4: navigate the host shell (dispatches quox-navigate). */
+    navigate(path: string): void;
+
+    /** PSDK-4: current user context, read from host auth state. */
+    getUser(): { userId: string | null; orgId: string | null; role: string; tier: string };
+
+    /**
+     * PSDK-4: agent chat. openSidebar dispatches quox-open-agent-chat; the
+     * host (SDK-DX P4) renders AgentChatPanel in a right-side dock. Dismiss
+     * with a quox-close-agent-chat window event.
+     */
+    chat: {
+        openSidebar(agentId: string, options?: { agentName?: string; agentColor?: string; additionalContext?: string; width?: number }): void;
+    };
 }
 
 export interface SharedDeps {
@@ -324,10 +339,247 @@ export interface SharedDeps {
     ReactRouterDOM: typeof import('react-router-dom');
 }
 
+// --- __quoxGlass component library ---
+//
+// Types below match the PRODUCTION implementations exposed by
+// quox-dashboard's thirdPartyPluginHost.js (window.__quoxGlass, PSDK-2).
+// The quox-plugin-vite dev host (P1) installs a functional but simplified
+// approximation of the same names at `npm run dev` time — see
+// docs/plugin-api.md "__quoxGlass component library" for the honest list of
+// dev-vs-prod deltas (e.g. GlassPanel's `highlight`/`hoverable`/`onClick`
+// props are prod-only; AgentChatPanel/AgentChatSidebar render a static
+// "dev preview" placeholder instead of a live agent).
+
+/** quox-dashboard/src/components/compliance/glass-primitives.jsx */
+export interface GlassPanelProps {
+    children?: React.ReactNode;
+    style?: React.CSSProperties;
+    /** Hex/CSS color used to tint the top/left border + glow. */
+    highlight?: string;
+    onClick?: () => void;
+    /** Enables hover lift + press-down transforms. */
+    hoverable?: boolean;
+}
+
+export interface GlassPillProps {
+    children?: React.ReactNode;
+    color?: string;
+    style?: React.CSSProperties;
+}
+
+export interface GlassTab {
+    id: string;
+    label: React.ReactNode;
+    icon?: React.ReactNode;
+}
+
+export interface GlassTabBarProps {
+    tabs: GlassTab[];
+    activeTab: string;
+    onTabChange: (tabId: string) => void;
+}
+
+export interface SectionHeaderProps {
+    title: React.ReactNode;
+    subtitle?: React.ReactNode;
+    action?: React.ReactNode;
+}
+
+export interface ProgressRingProps {
+    /** 0-100. */
+    value: number;
+    size?: number;
+    strokeWidth?: number;
+    /** Defaults to a value/threshold-derived color (green >90, amber >=60, else red). */
+    color?: string;
+    label?: React.ReactNode;
+}
+
+export interface SparklineProps {
+    data?: number[];
+    color?: string;
+    width?: number;
+    height?: number;
+}
+
+export interface GlassSkeletonProps {
+    height?: number;
+    style?: React.CSSProperties;
+}
+
+export interface GlassErrorProps {
+    message?: React.ReactNode;
+    onRetry?: () => void;
+}
+
+/** quox-dashboard/src/components/ui/MarkdownContent.jsx */
+export interface MarkdownContentProps {
+    children?: string;
+    /** Applies the `.md-compact` class for denser rendering (sidebars). */
+    compact?: boolean;
+    className?: string;
+}
+
+/**
+ * quox-dashboard/src/components/chat/AgentChatPanel.jsx
+ *
+ * Full-featured multi-tab agent chat panel — wraps ChatTab with automatic
+ * auth/workspace/LLM-routing context wiring. Renders a 48px collapsed rail
+ * when `collapsed` is true.
+ */
+export interface AgentChatPanelProps {
+    /** Agent id to chat with, e.g. "auditus". Resolved via entityRegistry for name/color fallback. */
+    agentId: string;
+    /** Overrides the display name resolved from the agent's entity registry entry. */
+    agentName?: string;
+    /** Overrides the accent color resolved from the agent's entity registry entry. Defaults to '#30ff90'. */
+    agentColor?: string;
+    /** Extra context text injected into the conversation's system context. */
+    additionalContext?: string;
+    /** When true, renders only the 48px collapsed rail (click to expand via onToggle). */
+    collapsed?: boolean;
+    onToggle?: () => void;
+    /** Panel width in px when expanded. Defaults to 300 (AppShell's SDK-DX P4 dock uses 360). */
+    width?: number;
+    /** Custom header node rendered above the chat body. */
+    headerContent?: React.ReactNode;
+    /** ChatTab session/tab id. Defaults to `${agentId}-panel`. */
+    tabId?: string;
+    className?: string;
+}
+
+/** quox-dashboard/src/components/chat/AgentChatSidebar.jsx */
+export interface AgentChatSidebarExtraSection {
+    id: string;
+    label: React.ReactNode;
+    badge?: number;
+    icon?: React.ReactNode;
+    content: React.ReactNode;
+}
+
+/**
+ * quox-dashboard/src/components/chat/AgentChatSidebar.jsx
+ *
+ * Lightweight sidebar chat pattern (PSDK-1) — the same primitive that backs
+ * 14+ built-in *ChatSidebar.jsx surfaces in quox-dashboard. Prefer this over
+ * AgentChatPanel for docked/embedded sidebars; use AgentChatPanel for a
+ * fuller multi-tab experience.
+ */
+export interface AgentChatSidebarProps {
+    agentId: string;
+    agentName?: string;
+    agentColor?: string;
+    agentRole?: string;
+    avatarUrl?: string;
+    /** Builds extra context passed to ChatEngine, e.g. `async () => ({ surface: 'sidebar' })`. */
+    contextBuilder?: () => Promise<Record<string, any>> | Record<string, any>;
+    /** Suggestion chips shown in the empty state (max 6 rendered). */
+    suggestions?: string[];
+    collapsed?: boolean;
+    onToggle?: () => void;
+    headerContent?: React.ReactNode;
+    placeholder?: string;
+    emptyIcon?: React.ReactNode;
+    emptyText?: string;
+    className?: string;
+    enableVoice?: boolean;
+    enableSmartRouter?: boolean;
+    enableMemory?: boolean;
+    /** Session storage key prefix. Defaults to `${agentId.toUpperCase()}_SIDEBAR`. */
+    sessionPrefix?: string;
+    vizStorageKey?: string;
+    /** Adds a section toggle bar under the header; chat is always the 'chat' section. */
+    extraSections?: AgentChatSidebarExtraSection[];
+    /** Controlled active section id. Falls back to internal state when omitted. */
+    activeSection?: string;
+    onSectionChange?: (sectionId: string) => void;
+    defaultSection?: string;
+    /** Populated by the component each render with imperative send/clear handles. */
+    chatHandleRef?: { current: { send: (text: string) => void; clear: () => void } | null };
+    renderMessageAddon?: (message: Record<string, any>) => React.ReactNode;
+    onAssistantMessage?: (message: Record<string, any>) => void;
+    /** Extra header controls rendered before the New Chat button and collapse chevron. */
+    headerExtra?: React.ReactNode;
+}
+
+/**
+ * window.__quoxGlass — real quox-dashboard glass-design-system components
+ * exposed at plugin-activation time (production) or a functional dev
+ * approximation exposed by quox-plugin-vite's dev host (`npm run dev`, P1).
+ * See thirdPartyPluginHost.js `initPluginHost()` (PSDK-2) for the canonical
+ * production export list.
+ */
+export interface QuoxGlassComponents {
+    // Chat patterns (2 shipped tiers; AgentChatPage full-screen tier is a
+    // future phase — see the TODO comment in thirdPartyPluginHost.js).
+    AgentChatSidebar: React.ComponentType<AgentChatSidebarProps>;
+    AgentChatPanel: React.ComponentType<AgentChatPanelProps>;
+
+    // Glass design system
+    GlassPanel: React.ComponentType<GlassPanelProps>;
+    GlassPill: React.ComponentType<GlassPillProps>;
+    GlassTabBar: React.ComponentType<GlassTabBarProps>;
+    SectionHeader: React.ComponentType<SectionHeaderProps>;
+    ProgressRing: React.ComponentType<ProgressRingProps>;
+    Sparkline: React.ComponentType<SparklineProps>;
+    GlassSkeleton: React.ComponentType<GlassSkeletonProps>;
+    GlassError: React.ComponentType<GlassErrorProps>;
+
+    // Design tokens
+    COLORS: {
+        purple: string;
+        cyan: string;
+        green: string;
+        amber: string;
+        red: string;
+        teal: string;
+        indigo: string;
+        white: string;
+        dimText: string;
+        subtleText: string;
+    };
+    STATUS_COLORS: {
+        compliant: string;
+        partial: string;
+        'non-compliant': string;
+        not_measured: string;
+        gap: string;
+        pass: string;
+        fail: string;
+        warn: string;
+        pending: string;
+    };
+    PROTOCOL_COLORS: {
+        AEE: string;
+        AOCL: string;
+        VOLT: string;
+        WARD: string;
+    };
+    /** Monospace font stack: `'JetBrains Mono','Fira Code',monospace`. */
+    M: string;
+    /** Sans-serif font stack: `'Inter',system-ui,sans-serif`. */
+    F: string;
+
+    // Content rendering
+    MarkdownContent: React.ComponentType<MarkdownContentProps>;
+}
+
 declare global {
     interface Window {
         __quoxSharedDeps: SharedDeps;
         __quoxPluginRegister: (pluginId: string, exports: PluginExports) => void;
         __quoxPluginApi: Record<string, PluginAPI>;
+        /**
+         * Glass design-system + chat components. Present in production after
+         * `initPluginHost()` runs (before first render) and in dev via the
+         * quox-plugin-vite dev host (unless `?bare=1` or `devHost: false`).
+         */
+        __quoxGlass?: QuoxGlassComponents;
+        /**
+         * Dev-only: the plugin project's parsed manifest.json, injected by
+         * quox-plugin-vite's dev host at `/__quox-dev/manifest.js`. Never set
+         * in production — plugin code should not rely on this at runtime.
+         */
+        __quoxDevManifest?: PluginManifest;
     }
 }

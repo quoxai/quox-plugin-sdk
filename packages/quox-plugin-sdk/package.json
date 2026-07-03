@@ -9,6 +9,12 @@
     "./testing": "./src/testing.js",
     "./types": "./src/types.d.ts"
   },
+  "files": ["src"],
   "keywords": ["quox", "plugin", "sdk"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quoxai/quox-plugin-sdk.git",
+    "directory": "packages/quox-plugin-sdk"
+  },
   "license": "MIT"
 }

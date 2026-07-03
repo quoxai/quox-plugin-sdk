@@ -238,6 +238,17 @@ function createDevPluginApi(pluginId = 'dev-plugin') {
         aee: {
             async emit() { return { success: true }; },
         },
+        // PSDK-4 surfaces (parity with PluginSandbox.createPluginApi). In the
+        // dev harness there's no host dock, so openSidebar just logs.
+        navigate(path) { window.location.hash = path; },
+        getUser() {
+            return { userId: null, orgId: null, role: 'viewer', tier: 'free' };
+        },
+        chat: {
+            openSidebar(agentId) {
+                console.info(`[quox-dev-host] chat.openSidebar('${agentId}') — the host dock only exists inside QuoxCORE; render __quoxGlass.AgentChatSidebar in your own layout for dev preview`);
+            },
+        },
     };
 }
 
