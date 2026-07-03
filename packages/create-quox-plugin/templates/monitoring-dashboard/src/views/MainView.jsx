@@ -30,7 +30,7 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1000px' }}>
-            <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
+            <h2 style={{ color: COLORS.white, marginBottom: 24, fontFamily: F }}>
                 ${displayName}
             </h2>
 
@@ -42,7 +42,7 @@ export default function MainView({ pluginApi }) {
                             <th key={h} style={{
                                 padding: '0.75rem',
                                 textAlign: 'left',
-                                color: COLORS.text.muted,
+                                color: COLORS.subtleText,
                                 fontWeight: 500,
                                 fontSize: '0.85rem',
                             }}>{h}</th>
@@ -52,7 +52,7 @@ export default function MainView({ pluginApi }) {
                 <tbody>
                     {services.map(service => (
                         <tr key={service.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.primary }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.white }}>
                                 {service.name}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
@@ -60,13 +60,13 @@ export default function MainView({ pluginApi }) {
                                     {service.status}
                                 </GlassPill>
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>
                                 {service.responseMs}ms
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>
                                 {service.uptimePct}%
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.muted, fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.subtleText, fontSize: '0.85rem' }}>
                                 {new Date(service.lastCheck).toLocaleTimeString()}
                             </td>
                         </tr>

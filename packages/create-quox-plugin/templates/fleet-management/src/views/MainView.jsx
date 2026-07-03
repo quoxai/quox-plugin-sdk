@@ -56,7 +56,7 @@ export default function MainView({ pluginApi }) {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
+            <h2 style={{ color: COLORS.white, marginBottom: 24, fontFamily: F }}>
                 ${displayName}
             </h2>
 
@@ -68,7 +68,7 @@ export default function MainView({ pluginApi }) {
                             <th key={h} style={{
                                 padding: '0.75rem',
                                 textAlign: 'left',
-                                color: COLORS.text.muted,
+                                color: COLORS.subtleText,
                                 fontWeight: 500,
                                 fontSize: '0.85rem',
                             }}>{h}</th>
@@ -78,20 +78,20 @@ export default function MainView({ pluginApi }) {
                 <tbody>
                     {hosts.map(host => (
                         <tr key={host.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.primary, fontWeight: 500 }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.white, fontWeight: 500 }}>
                                 {host.hostname}
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary, fontFamily: 'monospace' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.dimText, fontFamily: 'monospace' }}>
                                 {host.ip}
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>{host.group}</td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.secondary }}>{host.os}</td>
+                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>{host.group}</td>
+                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>{host.os}</td>
                             <td style={{ padding: '0.75rem' }}>
                                 <GlassPill color={STATUS_COLORS[host.status] || '#6b7280'}>
                                     {host.status}
                                 </GlassPill>
                             </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.text.muted, fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem', color: COLORS.subtleText, fontSize: '0.85rem' }}>
                                 {new Date(host.lastSeen).toLocaleString()}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
@@ -108,7 +108,7 @@ export default function MainView({ pluginApi }) {
                                         fontSize: '0.8rem',
                                     }}
                                 >
-                                    &#x21BB; Restart
+                                    ↻ Restart
                                 </button>
                                 <button
                                     onClick={() => handleAction('remove', host)}
@@ -122,7 +122,7 @@ export default function MainView({ pluginApi }) {
                                         fontSize: '0.8rem',
                                     }}
                                 >
-                                    &#x2715; Remove
+                                    ✕ Remove
                                 </button>
                             </td>
                         </tr>

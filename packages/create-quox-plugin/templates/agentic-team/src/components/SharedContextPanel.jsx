@@ -21,7 +21,7 @@ export default function SharedContextPanel({ context, onClose }) {
                     onClick={onClose}
                     style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}
                 >
-                    &#x2715;
+                    ✕
                 </button>
             </div>
             <pre style={{

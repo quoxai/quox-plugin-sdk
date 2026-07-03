@@ -22,7 +22,7 @@ export default function MainView({ pluginApi }) {
         <div style={{ display: 'grid', gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px', height: '100%', overflow: 'hidden' }}>
             {/* Main content pane */}
             <div style={{ overflowY: 'auto', padding: '2rem' }}>
-                <h2 style={{ color: COLORS.text.primary, marginBottom: M.lg, ...F.heading }}>
+                <h2 style={{ color: COLORS.white, marginBottom: 24, fontFamily: F }}>
                     ${displayName}
                 </h2>
 
@@ -30,14 +30,14 @@ export default function MainView({ pluginApi }) {
                 <AgentStatusCard status={agentStatus} />
 
                 {/* Tool Cards Row */}
-                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                     Agent Tools
                 </h3>
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                    gap: M.md,
-                    marginBottom: M.lg,
+                    gap: 16,
+                    marginBottom: 24,
                 }}>
                     {toolDefinitions.map(tool => (
                         <ToolCard key={tool.name} tool={tool} pluginApi={pluginApi} />
@@ -45,10 +45,10 @@ export default function MainView({ pluginApi }) {
                 </div>
 
                 {/* Quick Action Chips */}
-                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                     Quick Actions
                 </h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: M.sm }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {agentStatus.suggestions.map((suggestion, i) => (
                         <GlassPill key={i} style={{ cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
                             {suggestion}

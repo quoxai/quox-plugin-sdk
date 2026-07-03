@@ -28,8 +28,8 @@ export default function MainView({ pluginApi }) {
         <div style={{ display: 'grid', gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px', height: '100%', overflow: 'hidden' }}>
             {/* Main content pane */}
             <div style={{ overflowY: 'auto', padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: M.md }}>
-                    <h2 style={{ color: COLORS.text.primary, margin: 0, ...F.heading }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h2 style={{ color: COLORS.white, margin: 0, fontFamily: F }}>
                         ${displayName} Team
                     </h2>
                     <button
@@ -52,14 +52,14 @@ export default function MainView({ pluginApi }) {
                 <PolicyBadges policies={teamDefinition.policies} />
 
                 {/* Member Cards Row */}
-                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                     Team Members
                 </h3>
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                    gap: M.md,
-                    marginBottom: M.lg,
+                    gap: 16,
+                    marginBottom: 24,
                 }}>
                     {teamStatus.members.map(member => (
                         <MemberCard key={member.id} member={member} />
@@ -67,16 +67,16 @@ export default function MainView({ pluginApi }) {
                 </div>
 
                 {/* Task Queue */}
-                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                     Task Queue
                 </h3>
                 <TaskQueue tasks={tasks} />
 
                 {/* Quick Actions */}
-                <h3 style={{ color: COLORS.text.secondary, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
+                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
                     Quick Actions
                 </h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: M.sm }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {['Deploy latest to staging', 'Check all service health', 'View team metrics', 'Create incident report'].map((action, i) => (
                         <GlassPill key={i} style={{ cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
                             {action}

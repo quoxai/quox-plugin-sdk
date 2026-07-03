@@ -82,10 +82,10 @@ export default function MainView({ pluginApi }) {
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: M.md,
+                gap: 16,
             }}>
                 {items.map(item => (
-                    <GlassPanel key={item.id} style={{ padding: M.md, position: 'relative' }}>
+                    <GlassPanel key={item.id} style={{ padding: 16, position: 'relative' }}>
                         <button
                             onClick={() => removeItem(item.id)}
                             style={{
@@ -94,18 +94,18 @@ export default function MainView({ pluginApi }) {
                                 right: '0.5rem',
                                 background: 'none',
                                 border: 'none',
-                                color: COLORS.text.muted,
+                                color: COLORS.subtleText,
                                 cursor: 'pointer',
                                 fontSize: '1rem',
                                 padding: 0,
                             }}
                         >
-                            &#x2715;
+                            ✕
                         </button>
-                        <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
+                        <h4 style={{ color: COLORS.white, margin: '0 0 0.5rem' }}>
                             {item.title}
                         </h4>
-                        <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
+                        <p style={{ color: COLORS.dimText, fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
                             {item.description}
                         </p>
                         <div style={{
@@ -116,7 +116,7 @@ export default function MainView({ pluginApi }) {
                             <GlassPill color={item.status === 'active' ? '#10b981' : '#6b7280'}>
                                 {item.status}
                             </GlassPill>
-                            <span style={{ color: COLORS.text.muted, fontSize: '0.7rem' }}>
+                            <span style={{ color: COLORS.subtleText, fontSize: '0.7rem' }}>
                                 {new Date(item.createdAt).toLocaleDateString()}
                             </span>
                         </div>

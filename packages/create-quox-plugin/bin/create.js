@@ -613,6 +613,23 @@ function generateViteConfig(pluginName) {
     return renderTemplate('_shared/vite.config.js', { pluginName });
 }
 
+/**
+ * The SDK packages are NOT published to npm yet (deferred to launch, Adam
+ * 2026-07-03) — a registry semver would 404 on `npm install`. When the
+ * scaffolder runs from a local SDK checkout (the only way it runs today),
+ * point the deps at those packages via absolute file: paths. Absolute, not
+ * relative: relative file: deps break the moment a project sits at a
+ * different directory depth (star-alignment's original setup did exactly
+ * that). Falls back to registry semvers once the packages are published.
+ */
+function resolveSdkDep(pkg) {
+    const local = path.resolve(__dirname, '..', '..', pkg);
+    if (fs.existsSync(path.join(local, 'package.json'))) {
+        return `file:${local}`;
+    }
+    return '^0.1.0';
+}
+
 function generatePackageJson(pluginName) {
     return JSON.stringify({
         name: pluginName,
@@ -625,8 +642,10 @@ function generatePackageJson(pluginName) {
         },
         devDependencies: {
             '@vitejs/plugin-react': '^4.0.0',
-            'quox-plugin-vite': '^0.1.0',
-            'quox-plugin-sdk': '^0.1.0',
+            'quox-plugin-vite': resolveSdkDep('quox-plugin-vite'),
+            'quox-plugin-sdk': resolveSdkDep('quox-plugin-sdk'),
+            react: '^19.0.0',
+            'react-dom': '^19.0.0',
             vite: '^7.0.0',
             'adm-zip': '^0.5.10',
         },

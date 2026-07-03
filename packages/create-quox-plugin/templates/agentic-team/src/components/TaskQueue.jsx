@@ -37,7 +37,7 @@ export default function TaskQueue({ tasks }) {
                     <div style={{ flex: 1 }}>
                         <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.9rem' }}>{task.title}</span>
                         <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginLeft: '0.75rem' }}>
-                            &#x2192; {task.assignedTo}
+                            → {task.assignedTo}
                         </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>

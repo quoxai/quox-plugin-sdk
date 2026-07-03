@@ -44,13 +44,13 @@ export default function AgentChat({ pluginApi, suggestions, onClose }) {
                 alignItems: 'center',
             }}>
                 <span style={{ color: 'rgba(245,158,11,0.9)', fontWeight: 500 }}>
-                    &#x2728; ${displayName} Agent
+                    ✨ ${displayName} Agent
                 </span>
                 <button
                     onClick={onClose}
                     style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1.1rem' }}
                 >
-                    &#x2715;
+                    ✕
                 </button>
             </div>
 
@@ -121,7 +121,7 @@ export default function AgentChat({ pluginApi, suggestions, onClose }) {
                         cursor: 'pointer',
                     }}
                 >
-                    &#x27A4;
+                    ➤
                 </button>
             </div>
         </div>

@@ -20,14 +20,14 @@ export default function MainView({ pluginApi }) {
         <div style={{ display: 'grid', gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px', height: '100%', overflow: 'hidden' }}>
             {/* Main content pane */}
             <div style={{ overflowY: 'auto', padding: '2rem' }}>
-                <h2 style={{ color: COLORS.text.primary, marginBottom: M.md, ...F.heading }}>
+                <h2 style={{ color: COLORS.white, marginBottom: 16, fontFamily: F }}>
                     ${displayName}
                 </h2>
 
                 {/* Connection Status Banner */}
                 <GlassPanel style={{
                     padding: '0.75rem 1rem',
-                    marginBottom: M.lg,
+                    marginBottom: 24,
                     background: data.connected
                         ? 'rgba(16,185,129,0.1)'
                         : 'rgba(239,68,68,0.1)',
@@ -39,7 +39,7 @@ export default function MainView({ pluginApi }) {
                         color: data.connected ? '#10b981' : '#ef4444',
                         fontWeight: 500,
                     }}>
-                        {data.connected ? '&#x2713; Connected' : '&#x2717; Disconnected'}
+                        {data.connected ? '✓ Connected' : '✗ Disconnected'}
                     </span>
                 </GlassPanel>
 
@@ -47,18 +47,18 @@ export default function MainView({ pluginApi }) {
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: M.md,
-                    marginBottom: M.lg,
+                    gap: 16,
+                    marginBottom: 24,
                 }}>
                     {data.items.map(item => (
-                        <GlassPanel key={item.id} style={{ padding: M.md }}>
-                            <h4 style={{ color: COLORS.text.primary, margin: '0 0 0.5rem' }}>
+                        <GlassPanel key={item.id} style={{ padding: 16 }}>
+                            <h4 style={{ color: COLORS.white, margin: '0 0 0.5rem' }}>
                                 {item.title}
                             </h4>
-                            <p style={{ color: COLORS.text.secondary, fontSize: '0.85rem', margin: 0 }}>
+                            <p style={{ color: COLORS.dimText, fontSize: '0.85rem', margin: 0 }}>
                                 {item.description}
                             </p>
-                            <GlassPill style={{ marginTop: M.sm }}>
+                            <GlassPill style={{ marginTop: 8 }}>
                                 {item.type}
                             </GlassPill>
                         </GlassPanel>
@@ -68,8 +68,8 @@ export default function MainView({ pluginApi }) {
                 {/* Engagement Stats Row */}
                 <GlassPanel style={{
                     display: 'flex',
-                    gap: M.lg,
-                    padding: M.md,
+                    gap: 24,
+                    padding: 16,
                 }}>
                     {[
                         { label: 'Total Items', value: data.metrics.total },
@@ -77,10 +77,10 @@ export default function MainView({ pluginApi }) {
                         { label: 'Engagement', value: data.metrics.engagement + '%' },
                     ].map(stat => (
                         <div key={stat.label}>
-                            <div style={{ color: COLORS.text.primary, fontSize: '1.25rem', fontWeight: 600 }}>
+                            <div style={{ color: COLORS.white, fontSize: '1.25rem', fontWeight: 600 }}>
                                 {stat.value}
                             </div>
-                            <div style={{ color: COLORS.text.muted, fontSize: '0.8rem' }}>
+                            <div style={{ color: COLORS.subtleText, fontSize: '0.8rem' }}>
                                 {stat.label}
                             </div>
                         </div>

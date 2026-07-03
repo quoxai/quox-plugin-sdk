@@ -19,7 +19,7 @@ export default function EmptyState({ message, actionLabel, onAction }) {
                 marginBottom: '1rem',
                 opacity: 0.3,
             }}>
-                &#x1F4E6;
+                📦
             </div>
             <p style={{
                 color: 'rgba(255,255,255,0.6)',

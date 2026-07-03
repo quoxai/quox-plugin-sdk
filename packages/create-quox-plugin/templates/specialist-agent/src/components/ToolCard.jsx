@@ -53,7 +53,7 @@ export default function ToolCard({ tool, pluginApi }) {
                         fontSize: '0.9rem',
                     }}
                 >
-                    {expanded ? '&#x25B2;' : '&#x25BC;'}
+                    {expanded ? '▲' : '▼'}
                 </button>
             </div>
 
@@ -97,7 +97,7 @@ export default function ToolCard({ tool, pluginApi }) {
                             fontSize: '0.8rem',
                         }}
                     >
-                        {running ? 'Running...' : '&#x25B6; Run'}
+                        {running ? 'Running...' : '▶ Run'}
                     </button>
                 </div>
             )}
