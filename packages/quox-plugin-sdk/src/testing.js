@@ -87,6 +87,7 @@ export function setupPluginTestEnv() {
             React: require('react'),
             ReactDOM: require('react-dom/client'),
             ReactRouterDOM: require('react-router-dom'),
+            ReactJSXRuntime: require('react/jsx-runtime'),
         };
 
         const registered = {};

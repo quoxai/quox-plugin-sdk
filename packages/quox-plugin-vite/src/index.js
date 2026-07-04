@@ -19,6 +19,13 @@ const PACKAGE_ROOT = path.resolve(__dirname, '..');
 // renderChunk transform instead.
 const EXTERNAL_GLOBALS = {
     'react': 'window.__quoxSharedDeps.React',
+    // JSX runtime MUST come from the host, not the plugin's bundled React:
+    // a bundled react-jsx-runtime reads the internals of the React version
+    // the PLUGIN was built against (18's ReactCurrentOwner no longer exists
+    // in 19) and crashes on activation inside a host running another major.
+    // Host exposes it since quox-dashboard SDK-DX (thirdPartyPluginHost.js).
+    'react/jsx-runtime': 'window.__quoxSharedDeps.ReactJSXRuntime',
+    'react/jsx-dev-runtime': 'window.__quoxSharedDeps.ReactJSXRuntime',
     'react-dom': 'window.__quoxSharedDeps.ReactDOM',
     'react-dom/client': 'window.__quoxSharedDeps.ReactDOM',
     'react-router-dom': 'window.__quoxSharedDeps.ReactRouterDOM',
@@ -289,7 +296,7 @@ function quoxPluginVite(options = {}) {
                         fileName: () => 'plugin.esm.js',
                     },
                     rollupOptions: {
-                        external: ['react', 'react-dom', 'react-dom/client', 'react-router-dom', '@quox/glass'],
+                        external: Object.keys(EXTERNAL_GLOBALS),
                         output: {
                             globals: {
                                 react: 'window.__quoxSharedDeps.React',
@@ -338,7 +345,7 @@ function quoxPluginVite(options = {}) {
                 }
                 return null;
             }
-            if (source === 'react' || source === 'react-dom' || source === 'react-dom/client' || source === 'react-router-dom') {
+            if (Object.prototype.hasOwnProperty.call(EXTERNAL_GLOBALS, source)) {
                 return { id: source, external: true };
             }
             return null;

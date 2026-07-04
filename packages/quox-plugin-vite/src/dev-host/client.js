@@ -393,7 +393,24 @@ function mountFrame() {
 }
 
 function installGlobals() {
-    window.__quoxSharedDeps = { React, ReactDOM, ReactRouterDOM };
+    // ReactJSXRuntime: host-parity surface. Dev mode compiles JSX against the
+    // project's own react (no import rewrite), so this is unused here — but
+    // code probing __quoxSharedDeps.ReactJSXRuntime must see the same shape
+    // it will in the real host. jsx/jsxs delegate to createElement (children
+    // arrive pre-spread via the config object — adequate for a dev shim).
+    const jsx = (type, config, maybeKey) => {
+        const { children, ...props } = config || {};
+        if (maybeKey !== undefined) props.key = maybeKey;
+        return Array.isArray(children)
+            ? React.createElement(type, props, ...children)
+            : React.createElement(type, props, children);
+    };
+    window.__quoxSharedDeps = {
+        React,
+        ReactDOM,
+        ReactRouterDOM,
+        ReactJSXRuntime: { jsx, jsxs: jsx, jsxDEV: jsx, Fragment: React.Fragment },
+    };
     window.__quoxGlass = buildGlassMocks();
     window.__quoxPluginApi = createDevPluginApi();
     window.__quoxRegisteredPlugins = window.__quoxRegisteredPlugins || {};
