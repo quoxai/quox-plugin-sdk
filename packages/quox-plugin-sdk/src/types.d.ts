@@ -225,6 +225,8 @@ export interface PluginManifest {
 export type PluginPermission =
     | 'sidebar'
     | 'storage'
+    | 'durable'   // server-side org/user-scoped KV (api.durable) — host-enforced
+    | 'secrets'   // encrypted secrets vault (api.secrets) — host-enforced
     | 'network'
     | 'memory'
     | 'notifications'

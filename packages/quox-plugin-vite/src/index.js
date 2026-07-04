@@ -12,6 +12,56 @@ const fs = require('fs');
 const path = require('path');
 
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
+
+// Host-provided globals for the externalized shared deps. Rollup's
+// output.globals cannot express this for ESM output (it is only honored for
+// iife/umd), so rewriteExternalImportsToGlobals() applies the mapping as a
+// renderChunk transform instead.
+const EXTERNAL_GLOBALS = {
+    'react': 'window.__quoxSharedDeps.React',
+    'react-dom': 'window.__quoxSharedDeps.ReactDOM',
+    'react-dom/client': 'window.__quoxSharedDeps.ReactDOM',
+    'react-router-dom': 'window.__quoxSharedDeps.ReactRouterDOM',
+    '@quox/glass': 'window.__quoxGlass',
+};
+
+/**
+ * Rewrites `import ... from "<external>"` statements in an emitted ES chunk
+ * into const-reads of the host globals. Handles default, named (with `as`
+ * renames), namespace, combined default+named, and bare side-effect imports,
+ * in both pretty and minified (space-free) emissions.
+ */
+function rewriteExternalImportsToGlobals(code) {
+    for (const [spec, globalExpr] of Object.entries(EXTERNAL_GLOBALS)) {
+        const specPattern = spec.replace(/[/@.]/g, (m) => '\\' + m);
+        const re = new RegExp(
+            'import\\s*(?:([A-Za-z_$][\\w$]*)\\s*,\\s*)?' + // default before named/namespace
+            '(?:' +
+                '\\{([^}]*)\\}' +                            // named specifiers
+                '|\\*\\s*as\\s+([A-Za-z_$][\\w$]*)' +        // namespace
+                '|([A-Za-z_$][\\w$]*)' +                     // default only
+            ')?\\s*(?:from\\s*)?["\']' + specPattern + '["\'];?',
+            'g'
+        );
+        code = code.replace(re, (_m, defBeforeNamed, named, ns, defOnly) => {
+            const parts = [];
+            const def = defBeforeNamed || defOnly;
+            if (def) parts.push(`const ${def} = ${globalExpr};`);
+            if (ns) parts.push(`const ${ns} = ${globalExpr};`);
+            if (named) {
+                const destructure = named
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((s) => s.replace(/\s+as\s+/, ': '))
+                    .join(', ');
+                if (destructure) parts.push(`const { ${destructure} } = ${globalExpr};`);
+            }
+            return parts.join(' ');
+        });
+    }
+    return code;
+}
 const DEV_HOST_CLIENT_PATH = path.join(__dirname, 'dev-host', 'client.js');
 const DEV_HOST_CSS_PATH = path.join(PACKAGE_ROOT, 'assets', 'qx-components.css');
 const ENTRY_CANDIDATES = ['src/index.jsx', 'src/index.js', 'src/main.jsx', 'src/main.tsx'];
@@ -223,6 +273,15 @@ function quoxPluginVite(options = {}) {
                 ...devResolve,
                 // PSDK-7: Dev server config — proxy to live QuoxCORE
                 server: serverConfig,
+                // Plugins ship straight to the browser — there is no downstream
+                // bundler to substitute process.env.NODE_ENV (lib mode leaves it
+                // in), and `process` doesn't exist in the page. Pin it at build
+                // time or any dependency with a dev/prod switch (react/jsx-runtime)
+                // throws "process is not defined" at activation. Dev keeps
+                // Vite's own handling so React stays in dev mode.
+                ...(env.command === 'build' ? {
+                    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+                } : {}),
                 build: {
                     lib: {
                         entry: 'src/index.jsx',
@@ -253,6 +312,17 @@ function quoxPluginVite(options = {}) {
         configResolved(resolvedConfig) {
             isServe = resolvedConfig.command === 'serve';
             resolvedRoot = resolvedConfig.root || process.cwd();
+        },
+
+        // Rollup's output.globals is IGNORED for format:'es' — it only applies
+        // to iife/umd. Left alone, the emitted plugin.esm.js keeps bare
+        // `import ... from "react"` statements, which the dashboard host's
+        // blob-URL <script type="module"> cannot resolve (no import map), so
+        // activation fails with "Failed to resolve module specifier".
+        // Rewrite external imports into reads of the host-provided globals.
+        renderChunk(code) {
+            if (isServe) return null;
+            return { code: rewriteExternalImportsToGlobals(code), map: null };
         },
 
         // Externalise the host-shared deps at BUILD time only. In dev the
@@ -406,5 +476,6 @@ module.exports.__testables = {
     devHostHeadTags,
     injectDevHostHead,
     buildDefaultHtml,
+    rewriteExternalImportsToGlobals,
     DEV_HOST_ENTRYPOINTS,
 };
