@@ -290,14 +290,23 @@ function quoxPluginVite(options = {}) {
                     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
                 } : {}),
                 build: {
-                    lib: {
-                        entry: 'src/index.jsx',
-                        formats: ['es'],
-                        fileName: () => 'plugin.esm.js',
-                    },
+                    // NOTE: intentionally NOT using `build.lib` — lib mode with a
+                    // single entry forces `inlineDynamicImports:true`, collapsing
+                    // every dynamic import() back into plugin.esm.js. To let a
+                    // plugin code-split heavy views into lazily-loaded chunks
+                    // (e.g. Quoxel's globe mode) we drive rollup directly. The
+                    // entry is still emitted as plugin.esm.js and CSS as
+                    // plugin.css; extra chunks land in dist/assets/ and the host
+                    // resolves them via an import map (see SDK code-splitting).
                     rollupOptions: {
+                        input: 'src/index.jsx',
                         external: Object.keys(EXTERNAL_GLOBALS),
                         output: {
+                            format: 'es',
+                            entryFileNames: 'plugin.esm.js',
+                            chunkFileNames: 'assets/[name]-[hash].js',
+                            assetFileNames: 'plugin.[ext]',
+                            inlineDynamicImports: false,
                             globals: {
                                 react: 'window.__quoxSharedDeps.React',
                                 'react-dom': 'window.__quoxSharedDeps.ReactDOM',
@@ -305,7 +314,6 @@ function quoxPluginVite(options = {}) {
                                 'react-router-dom': 'window.__quoxSharedDeps.ReactRouterDOM',
                                 '@quox/glass': 'window.__quoxGlass',
                             },
-                            assetFileNames: 'plugin.[ext]',
                         },
                     },
                     cssCodeSplit: false,
