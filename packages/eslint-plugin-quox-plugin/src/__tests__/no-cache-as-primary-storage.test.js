@@ -2,8 +2,7 @@
  * Lexical AST tests for no-cache-as-primary-storage. We use ESLint's RuleTester
  * with `espree` (the default parser) so the package has zero runtime deps.
  */
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
 import rule from '../rules/no-cache-as-primary-storage.js';
 
