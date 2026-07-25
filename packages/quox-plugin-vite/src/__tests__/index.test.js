@@ -19,16 +19,17 @@ describe('quox-plugin-vite', () => {
     });
 
     describe('config', () => {
-        it('sets lib entry to src/index.jsx', () => {
+        it('sets rollup entry to src/index.jsx', () => {
             const plugin = quoxPluginVite({ pluginId: 'test-plugin' });
             const config = plugin.config({});
-            expect(config.build.lib.entry).toBe('src/index.jsx');
+            expect(config.build.rollupOptions.input).toBe('src/index.jsx');
         });
 
-        it('sets ES module format', () => {
+        it('sets ES module output format with code-splitting enabled', () => {
             const plugin = quoxPluginVite({ pluginId: 'test-plugin' });
             const config = plugin.config({});
-            expect(config.build.lib.formats).toEqual(['es']);
+            expect(config.build.rollupOptions.output.format).toBe('es');
+            expect(config.build.rollupOptions.output.inlineDynamicImports).toBe(false);
         });
 
         it('externalises React dependencies', () => {
@@ -49,10 +50,11 @@ describe('quox-plugin-vite', () => {
             expect(globals['react-router-dom']).toBe('window.__quoxSharedDeps.ReactRouterDOM');
         });
 
-        it('outputs plugin.esm.js filename', () => {
+        it('outputs plugin.esm.js as the entry filename and chunks lazily-loaded code under assets/', () => {
             const plugin = quoxPluginVite({ pluginId: 'test-plugin' });
             const config = plugin.config({});
-            expect(config.build.lib.fileName()).toBe('plugin.esm.js');
+            expect(config.build.rollupOptions.output.entryFileNames).toBe('plugin.esm.js');
+            expect(config.build.rollupOptions.output.chunkFileNames).toBe('assets/[name]-[hash].js');
         });
     });
 

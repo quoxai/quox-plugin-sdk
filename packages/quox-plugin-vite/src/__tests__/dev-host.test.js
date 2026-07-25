@@ -85,14 +85,12 @@ describe('quox-plugin-vite dev host (P1 SDK-DX)', () => {
             expect(disabled.server.fs).toBeUndefined();
         });
 
-        it('does not change build mode config (lib/rollup untouched) regardless of devHost', () => {
+        it('does not change build mode config (rollupOptions untouched) regardless of devHost', () => {
             const withDevHost = quoxPluginVite({ pluginId: 'p' }).config({});
             const withoutDevHost = quoxPluginVite({ pluginId: 'p', devHost: false }).config({});
-            // build.lib.fileName is a fresh closure per call, so compare its
-            // result rather than function identity; everything else deep-equals.
-            expect(withDevHost.build.lib.fileName()).toBe(withoutDevHost.build.lib.fileName());
-            expect({ ...withDevHost.build, lib: { ...withDevHost.build.lib, fileName: undefined } })
-                .toEqual({ ...withoutDevHost.build, lib: { ...withoutDevHost.build.lib, fileName: undefined } });
+            expect(withDevHost.build).toEqual(withoutDevHost.build);
+            expect(withDevHost.build.rollupOptions.input).toBe('src/index.jsx');
+            expect(withDevHost.build.rollupOptions.output.entryFileNames).toBe('plugin.esm.js');
         });
     });
 
