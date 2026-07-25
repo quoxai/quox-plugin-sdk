@@ -282,6 +282,7 @@ See [docs/claude-skill.md](docs/claude-skill.md) for details.
 | [Backend Plugins](docs/backend-plugins.md) | Adding a Docker backend service |
 | [Signing & Licensing](docs/signing.md) | Ed25519 signatures and license keys |
 | [Claude Skill](docs/claude-skill.md) | AI-assisted plugin development |
+| [Suggested Rules](docs/suggested-rules.md) | Ship rules with every skill/plugin so agents actually use them |
 | [Contributing](CONTRIBUTING.md) | Development setup and PR guidelines |
 
 ## Contributing
