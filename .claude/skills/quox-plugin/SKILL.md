@@ -3,6 +3,7 @@ skill: quox-plugin
 description: Help developers build QuoxCORE plugins — scaffold, manifest editing, debugging, extending, and reviewing
 arguments: scaffold | manifest | debug | extend | review
 ---
+<!-- Canonical version of this skill's debug/manifest/review content now lives in quoxpert-plugin-sdk (github.com/quoxai/quoxpert, plugin/skills/quoxpert-plugin-sdk/SKILL.md): that's the externally-distributed copy. Update there first, then sync back here if needed. -->
 
 # QuoxCORE Plugin Development Skill
 
