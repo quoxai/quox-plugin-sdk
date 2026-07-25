@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { introspectMcpStdioServer, loadMcpToolsFromJsonFile } = require('../lib/mcp-introspect');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 function ask(question) {
@@ -48,7 +49,7 @@ const TEMPLATE_NAMES = TEMPLATES.map(t => t.name);
 
 // --- File generators per template ---
 
-function generateManifest(pluginName, displayName, author, description, category, template) {
+function generateManifest(pluginName, displayName, author, description, category, template, mcpData = null) {
     const base = {
         id: pluginName,
         name: displayName,
@@ -276,6 +277,48 @@ function generateManifest(pluginName, displayName, author, description, category
         };
         // Delegator keywords: used by the routing layer to dispatch conversations to this agent
         base.delegatorKeywords = ['scan', 'vulnerability', 'security', 'finding', 'remediate', 'audit', pluginName];
+
+        // --from-mcp / --from-mcp-json migration mode: override the security-scanner
+        // defaults above with an agent wired to the introspected MCP server's tools.
+        if (mcpData) {
+            const { mcpTools, sourceCommand, serverName } = mcpData;
+            const toolDefs = buildMcpToolDefinitions(pluginName, mcpTools);
+            const agentLabel = serverName || displayName;
+
+            base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
+            base.agentDefinition.description = `Specialist agent wired to the "${agentLabel}" MCP server (${mcpTools.length} tool(s) imported).`;
+            base.agentDefinition.domain = 'mcp-integration';
+            base.agentDefinition.systemPrompt = `You are the ${displayName} specialist agent, generated from the MCP server "${agentLabel}". You have access to ${mcpTools.length} tool(s) imported from that server: explain what each tool does, help the user pick the right one, and summarise results clearly. Live execution of these tools is wired through Quox powers, not this browser plugin.`;
+            base.agentDefinition.capabilities = ['query', 'invoke-tool', 'summarise'];
+            base.agentDefinition.tools = toolDefs.map(t => t.name);
+            base.agentDefinition.suggestions = [
+                `What tools does the ${agentLabel} agent have?`,
+                toolDefs[0] ? `Explain what ${toolDefs[0].name} does` : 'Explain the imported MCP tools',
+                `Summarise the ${mcpTools.length} tool(s) imported from ${agentLabel}`,
+            ];
+
+            base.agentPersona.specialty = `MCP tool integration for ${agentLabel}`;
+            base.agentPersona.description = `Specialist agent seeded from the "${agentLabel}" MCP server, ${mcpTools.length} tool(s) imported.`;
+            base.agentPersona.systemPrompt = base.agentDefinition.systemPrompt;
+
+            base.toolDefinitions = toolDefs;
+
+            base.specialist.name = `${agentLabel} Agent`;
+            base.specialist.description = base.agentDefinition.description;
+            base.specialist.capabilities = ['query', 'invoke-tool', 'summarise'];
+
+            base.delegatorKeywords = Array.from(new Set([
+                ...base.delegatorKeywords,
+                ...mcpTools.map(t => normalizeMcpToolName(t.name)),
+            ]));
+
+            base.mcpProvenance = {
+                sourceCommand: sourceCommand || null,
+                serverName: serverName || null,
+                toolCount: mcpTools.length,
+                generatedAt: new Date().toISOString(),
+            };
+        }
     }
 
     if (template === 'agentic-team') {
@@ -527,6 +570,108 @@ function generateSpecialistMock(displayName) {
     return renderTemplate('specialist-agent/src/data/mock.js', { displayName });
 }
 
+// --- MCP migration mode generators (--from-mcp / --from-mcp-json) ---
+// Builds on the specialist-agent template: an agent persona plus a tool list,
+// but the persona and tools are seeded from a real MCP server's tools/list
+// result instead of the hardcoded security-scanner defaults.
+
+function normalizeMcpToolName(name) {
+    // Tool names handed to an LLM must not contain dots; dashes are also
+    // normalized for consistency with the rest of the plugin_<name>_<tool> convention.
+    return String(name).replace(/[.\-]+/g, '_');
+}
+
+function validateMcpTools(tools) {
+    if (!Array.isArray(tools)) {
+        throw new Error('Expected an array of MCP tools from tools/list.');
+    }
+    tools.forEach((t, i) => {
+        if (!t || typeof t.name !== 'string' || !t.name.trim()) {
+            throw new Error(`MCP tool at index ${i} is missing a "name" field.`);
+        }
+    });
+}
+
+function buildMcpToolDefinitions(pluginName, mcpTools) {
+    // Claude tool_use format, matching the shape the specialist-agent template
+    // already uses for base.toolDefinitions. The normalized name keeps the
+    // plugin_<pluginName>_<tool> convention; the original MCP tool name (which
+    // may contain dots) is kept alongside as canonical metadata.
+    return mcpTools.map(t => ({
+        name: `plugin_${pluginName}_${normalizeMcpToolName(t.name)}`,
+        description: t.description || `MCP tool: ${t.name}`,
+        input_schema: t.inputSchema || t.input_schema || { type: 'object', properties: {}, required: [] },
+        mcpToolName: t.name,
+    }));
+}
+
+function buildMcpToolDescriptors(mcpTools) {
+    return mcpTools.map(t => ({
+        name: normalizeMcpToolName(t.name),
+        canonicalName: t.name,
+        description: t.description || '',
+        inputSchema: t.inputSchema || t.input_schema || { type: 'object', properties: {} },
+    }));
+}
+
+function generateMcpAgentDefJs(displayName, agentDefinition) {
+    return `/**\n * ${displayName}: Agent Definition, generated from an MCP server's tools/list result.\n * Compatible with agentRegistry.js shape.\n */\n\nexport const agentDefinition = ${JSON.stringify(agentDefinition, null, 4)};\n`;
+}
+
+function generateMcpAgentPersonaJs(displayName, agentPersona) {
+    return `/**\n * ${displayName}: Agent Persona, generated from an MCP server's tools/list result.\n * Compatible with assistants.js shape.\n */\n\nexport const agentPersona = ${JSON.stringify(agentPersona, null, 4)};\n`;
+}
+
+function generateMcpAgentToolsJs(toolDefinitions) {
+    return `/**\n * Agent tool definitions, Claude tool_use format, generated from an MCP\n * server's tools/list result.\n * Naming convention: plugin_{pluginId}_{normalized_mcp_tool_name}\n * The original (possibly dotted) MCP tool name is kept as "mcpToolName" for\n * traceability back to the source server.\n */\n\nexport const toolDefinitions = ${JSON.stringify(toolDefinitions, null, 4)};\n`;
+}
+
+function generateMcpToolsDataModule(displayName, sourceCommand, serverName, mcpTools) {
+    const descriptors = buildMcpToolDescriptors(mcpTools);
+    return `/**\n * MCP tool descriptors imported from "${serverName || displayName}".\n * Source: ${sourceCommand || '(from a --from-mcp-json file)'}\n *\n * These are metadata only, for listing and display in this plugin. Live\n * invocation of these tools does not happen in the browser plugin sandbox;\n * it is wired through Quox powers (see README.md, "Live execution" section).\n *\n * name          - LLM-safe normalized tool name (dots/dashes replaced with underscores)\n * canonicalName - original MCP tool name as reported by tools/list\n * description   - tool description as reported by the MCP server\n * inputSchema   - JSON Schema for the tool's input, as reported by tools/list\n */\n\nexport const mcpTools = ${JSON.stringify(descriptors, null, 4)};\n`;
+}
+
+function generateMcpReadme(pluginName, displayName, sourceCommand, serverName, mcpTools) {
+    const toolCount = mcpTools.length;
+    const generatedAt = new Date().toISOString();
+    const toolLines = mcpTools
+        .map(t => `- \`${normalizeMcpToolName(t.name)}\` (from \`${t.name}\`): ${t.description || 'no description provided'}`)
+        .join('\n');
+
+    return `# ${displayName}
+
+A QuoxCORE specialist-agent plugin scaffolded from an MCP server's tools/list result.
+
+## Provenance
+
+| Field | Value |
+|-------|-------|
+| Source command | \`${sourceCommand || '(imported from a --from-mcp-json file)'}\` |
+| MCP server name | ${serverName || '(not reported by the server)'} |
+| Tools imported | ${toolCount} |
+| Generated | ${generatedAt} |
+
+## Imported tools
+
+${toolLines || '_No tools were reported by the MCP server._'}
+
+Each tool is listed in \`src/data/mcp-tools.js\` (full descriptor, including the original MCP name) and referenced by the specialist agent in \`manifest.json\` (\`agentDefinition.tools\`) and \`src/agent/tools.js\` (Claude tool_use format, normalized names).
+
+## What this plugin does, and does not, do
+
+This scaffold gives the specialist agent a persona and a tool list sourced from the MCP server above, and it routes chat in the dashboard to that agent. It does **not** execute the MCP server's tools live from inside the browser plugin: the plugin sandbox has no stdio process access, and spawning an arbitrary MCP server from client-side JS would be both impossible and unsafe. The tool list here is display and routing metadata only.
+
+To wire up real, live execution of these tools, use \`quox powers\` (QuoxCORE's server-side tool execution layer) to register this MCP server for live use. Once wired, the specialist agent generated here can invoke the tools for real; until then, treat the tool list in this plugin as documentation, not a working integration.
+
+## Next steps
+
+- \`npm install\`
+- \`npm run dev\`, preview the agent's persona, tool list, and chat panel in the dev host
+- \`quox powers\`, wire this MCP server for live tool execution
+- \`npm run build\`, produces the \`.quoxplugin\` package
+`;
+}
+
 // --- Agentic Team generators ---
 
 function generateTeamDef(pluginName, displayName) {
@@ -658,8 +803,8 @@ function generateGitignore() {
 
 // --- Template file map ---
 
-function getTemplateFiles(pluginName, displayName, author, description, category, template) {
-    const manifest = generateManifest(pluginName, displayName, author, description, category, template);
+function getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData = null) {
+    const manifest = generateManifest(pluginName, displayName, author, description, category, template, mcpData);
     const files = {
         'manifest.json': JSON.stringify(manifest, null, 2),
         'src/index.jsx': generateIndexJsx(pluginName, displayName, template),
@@ -713,15 +858,25 @@ function getTemplateFiles(pluginName, displayName, author, description, category
             break;
 
         case 'specialist-agent':
-            files['src/agent/agentDef.js'] = generateSpecialistAgentDef(pluginName, displayName);
-            files['src/agent/agentPersona.js'] = generateSpecialistAgentPersona(pluginName, displayName);
-            files['src/agent/tools.js'] = generateSpecialistAgentTools(pluginName);
+            files['src/agent/agentDef.js'] = mcpData
+                ? generateMcpAgentDefJs(displayName, manifest.agentDefinition)
+                : generateSpecialistAgentDef(pluginName, displayName);
+            files['src/agent/agentPersona.js'] = mcpData
+                ? generateMcpAgentPersonaJs(displayName, manifest.agentPersona)
+                : generateSpecialistAgentPersona(pluginName, displayName);
+            files['src/agent/tools.js'] = mcpData
+                ? generateMcpAgentToolsJs(manifest.toolDefinitions)
+                : generateSpecialistAgentTools(pluginName);
             files['src/views/MainView.jsx'] = generateSpecialistMainView(pluginName, displayName);
             files['src/views/SettingsPanel.jsx'] = generateSpecialistSettings(pluginName, displayName);
             files['src/components/AgentStatusCard.jsx'] = generateAgentStatusCard();
             files['src/components/ToolCard.jsx'] = generateToolCard();
             files['src/components/AgentChat.jsx'] = generateAgentChat(pluginName, displayName);
             files['src/data/mock.js'] = generateSpecialistMock(displayName);
+            if (mcpData) {
+                files['src/data/mcp-tools.js'] = generateMcpToolsDataModule(displayName, mcpData.sourceCommand, mcpData.serverName, mcpData.mcpTools);
+                files['README.md'] = generateMcpReadme(pluginName, displayName, mcpData.sourceCommand, mcpData.serverName, mcpData.mcpTools);
+            }
             break;
 
         case 'agentic-team':
@@ -746,8 +901,36 @@ function getTemplateFiles(pluginName, displayName, author, description, category
 
 // --- Main ---
 
+function printHelp() {
+    console.log(`
+create-quox-plugin - Scaffold a new QuoxCORE plugin
+
+Usage:
+  npx create-quox-plugin <name>
+  npx create-quox-plugin <name> --template <template>
+  npx create-quox-plugin <name> --from-mcp "<stdio command>"
+  npx create-quox-plugin <name> --from-mcp-json <file>
+
+Options:
+  --template <name>       Use a specific template. Available: ${TEMPLATE_NAMES.join(', ')}
+  --from-mcp <command>    Migration mode: spawn the given stdio command as an MCP server,
+                          run the MCP initialize handshake, call tools/list, then scaffold
+                          a specialist-agent plugin whose agent is wired with those tools.
+  --from-mcp-json <file>  Migration mode (offline): read a saved tools/list result from
+                          <file> instead of spawning a live MCP server.
+  --non-interactive       Skip prompts, use defaults for anything not passed as a flag
+  --help, -h              Show this help message
+`);
+}
+
 async function main() {
     const args = process.argv.slice(2);
+
+    if (args.includes('--help') || args.includes('-h')) {
+        printHelp();
+        process.exit(0);
+    }
+
     let pluginName = args.find(a => !a.startsWith('--'));
     let template = null;
     const nonInteractive = args.includes('--non-interactive') || !process.stdin.isTTY;
@@ -760,6 +943,26 @@ async function main() {
             console.error(`Available: ${TEMPLATE_NAMES.join(', ')}`);
             process.exit(1);
         }
+    }
+
+    // --from-mcp / --from-mcp-json migration mode: always scaffolds the
+    // specialist-agent template, wired with the introspected MCP server's tools.
+    const fromMcpIdx = args.indexOf('--from-mcp');
+    const mcpCommand = fromMcpIdx !== -1 ? args[fromMcpIdx + 1] : null;
+    const fromMcpJsonIdx = args.indexOf('--from-mcp-json');
+    const mcpJsonFile = fromMcpJsonIdx !== -1 ? args[fromMcpJsonIdx + 1] : null;
+
+    if (mcpCommand && mcpJsonFile) {
+        console.error('Use either --from-mcp or --from-mcp-json, not both.');
+        process.exit(1);
+    }
+    const mcpMode = Boolean(mcpCommand || mcpJsonFile);
+    if (mcpMode) {
+        if (template && template !== 'specialist-agent') {
+            console.error(`--from-mcp/--from-mcp-json scaffolds the specialist-agent template; --template ${template} is not compatible with it.`);
+            process.exit(1);
+        }
+        template = 'specialist-agent';
     }
 
     if (!pluginName) {
@@ -820,10 +1023,40 @@ async function main() {
         process.exit(1);
     }
 
+    // MCP introspection: gather the tool list before scaffolding anything.
+    let mcpData = null;
+    if (mcpMode) {
+        try {
+            if (mcpCommand) {
+                console.log(`\nIntrospecting MCP server: ${mcpCommand}`);
+                const result = await introspectMcpStdioServer(mcpCommand);
+                validateMcpTools(result.tools);
+                mcpData = {
+                    mcpTools: result.tools,
+                    sourceCommand: mcpCommand,
+                    serverName: (result.serverInfo && result.serverInfo.name) || null,
+                };
+            } else {
+                console.log(`\nLoading MCP tools from ${mcpJsonFile}`);
+                const result = loadMcpToolsFromJsonFile(path.resolve(mcpJsonFile));
+                validateMcpTools(result.tools);
+                mcpData = {
+                    mcpTools: result.tools,
+                    sourceCommand: `(imported from --from-mcp-json ${mcpJsonFile})`,
+                    serverName: result.serverName,
+                };
+            }
+            console.log(`Found ${mcpData.mcpTools.length} MCP tool(s)${mcpData.serverName ? ` from "${mcpData.serverName}"` : ''}.`);
+        } catch (err) {
+            console.error(`MCP introspection failed: ${err.message}`);
+            process.exit(1);
+        }
+    }
+
     console.log(`\nScaffolding ${displayName} (${template} template)...\n`);
 
     // Generate all files
-    const files = getTemplateFiles(pluginName, displayName, author, description, category, template);
+    const files = getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData);
 
     // Write files
     const writtenFiles = [];
@@ -843,6 +1076,11 @@ async function main() {
     console.log('  npm install');
     console.log('  npm run build    # produces .quoxplugin file');
     console.log('  npm run dev      # start dev server');
+    if (mcpData) {
+        console.log('');
+        console.log(`See README.md for the tool list and provenance. This plugin does not execute`);
+        console.log(`MCP tools live; wire that up with quox powers.`);
+    }
 }
 
 main().catch(err => {

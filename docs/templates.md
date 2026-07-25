@@ -114,6 +114,33 @@ node packages/create-quox-plugin/bin/create.js my-plugin
 node packages/create-quox-plugin/bin/create.js my-plugin --template monitoring-dashboard
 ```
 
+## Migration modes
+
+Migration modes are not a template you pick from the list above; they are a CLI flag that scaffolds the `specialist-agent` template automatically, with the agent's persona and tools seeded from a real MCP (Model Context Protocol) server instead of the hardcoded security-scanner defaults.
+
+```bash
+# Live: spawn a stdio MCP server, introspect its tools, scaffold the agent
+node packages/create-quox-plugin/bin/create.js my-plugin --from-mcp "node my-mcp-server.js"
+
+# Offline: read a previously saved tools/list result instead of spawning a server
+node packages/create-quox-plugin/bin/create.js my-plugin --from-mcp-json ./tools-list.json
+```
+
+`--from-mcp` spawns the given command as a child process and speaks the MCP protocol to it directly: JSON-RPC 2.0, newline-delimited, over stdin/stdout. It performs the `initialize` handshake, sends the `notifications/initialized` notification, calls `tools/list`, then closes the process. There is a 15 second timeout; if the server does not respond in time, the CLI exits with a clear error rather than hanging.
+
+`--from-mcp-json` skips the live handshake entirely and reads a saved `tools/list` result from disk, either `{ "tools": [...], "serverInfo": { "name": "..." } }` or a plain array of tool objects.
+
+Each MCP tool becomes:
+
+- an entry in `manifest.json`'s `agentDefinition.tools` and `toolDefinitions` (Claude tool_use format)
+- an entry in the generated `src/data/mcp-tools.js` descriptor module
+
+Tool names are normalized for LLM safety (dots and dashes become underscores, following the existing `plugin_<pluginName>_<tool>` naming convention); the original MCP tool name is kept alongside as `mcpToolName` / `canonicalName` for traceability.
+
+The generated `manifest.json` also gets an `mcpProvenance` block (source command, server name, tool count, generation timestamp), and the scaffolded `README.md` documents the same provenance plus one important limit: **this plugin does not execute MCP tools live**. The browser plugin sandbox has no stdio process access, so the tool list is display and routing metadata only. Live execution is wired through `quox powers`, QuoxCORE's server-side tool execution layer, not the plugin itself.
+
+See the [Convert an MCP Server](tutorials/convert-mcp-server.md) walkthrough (draft).
+
 ## Tutorials
 
 The basic template is covered by the [Getting Started](getting-started.md) guide. Each advanced template has a dedicated tutorial:
@@ -125,3 +152,4 @@ The basic template is covered by the [Getting Started](getting-started.md) guide
 - [Building an Enterprise Plugin](tutorials/enterprise-extension.md)
 - [Building a Specialist Agent Plugin](tutorials/specialist-agent.md)
 - [Building an Agentic Team Plugin](tutorials/agentic-team.md)
+- [Convert an MCP Server](tutorials/convert-mcp-server.md) (draft, migration mode)
