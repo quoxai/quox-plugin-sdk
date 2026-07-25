@@ -282,7 +282,12 @@ function generateManifest(pluginName, displayName, author, description, category
         // defaults above with an agent wired to the introspected MCP server's tools.
         if (mcpData) {
             const { mcpTools, sourceCommand, serverName } = mcpData;
-            const toolDefs = buildMcpToolDefinitions(pluginName, mcpTools);
+            const collisionResult = (mcpData.resolvedToolNames && mcpData.toolNameCollisions)
+                ? { resolved: mcpData.resolvedToolNames, renames: mcpData.toolNameCollisions }
+                : resolveMcpToolNameCollisions(mcpTools);
+            const resolvedToolNames = collisionResult.resolved;
+            const toolNameCollisions = collisionResult.renames;
+            const toolDefs = buildMcpToolDefinitions(pluginName, resolvedToolNames);
             const agentLabel = serverName || displayName;
 
             base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
@@ -309,7 +314,7 @@ function generateManifest(pluginName, displayName, author, description, category
 
             base.delegatorKeywords = Array.from(new Set([
                 ...base.delegatorKeywords,
-                ...mcpTools.map(t => normalizeMcpToolName(t.name)),
+                ...resolvedToolNames.map(r => r.name),
             ]));
 
             base.mcpProvenance = {
@@ -317,6 +322,7 @@ function generateManifest(pluginName, displayName, author, description, category
                 serverName: serverName || null,
                 toolCount: mcpTools.length,
                 generatedAt: new Date().toISOString(),
+                toolNameCollisions,
             };
         }
     }
@@ -581,6 +587,38 @@ function normalizeMcpToolName(name) {
     return String(name).replace(/[.\-]+/g, '_');
 }
 
+// Distinct MCP tool names can normalize to the same string (e.g. "a.b", "a_b",
+// and "a-b" all become "a_b"). Left unchecked this scaffolds a plugin with
+// duplicate tool names, which LLM tool-use APIs reject outright. This resolves
+// collisions deterministically, in tools/list response order: the first tool
+// to claim a normalized name keeps it; every later tool that collides gets
+// "_2", "_3", ... appended until it finds a free name.
+//
+// Returns { resolved, renames }:
+//   resolved - array parallel to mcpTools: { tool, name } where `name` is the
+//              final, collision-free normalized name for that tool.
+//   renames  - array of { canonicalName, normalizedName, disambiguatedName }
+//              for every tool that had to be disambiguated (empty if none did).
+function resolveMcpToolNameCollisions(mcpTools) {
+    const used = new Set();
+    const renames = [];
+
+    const resolved = mcpTools.map(tool => {
+        const base = normalizeMcpToolName(tool.name);
+        let name = base;
+        if (used.has(name)) {
+            let n = 2;
+            while (used.has(`${base}_${n}`)) n++;
+            name = `${base}_${n}`;
+            renames.push({ canonicalName: tool.name, normalizedName: base, disambiguatedName: name });
+        }
+        used.add(name);
+        return { tool, name };
+    });
+
+    return { resolved, renames };
+}
+
 function validateMcpTools(tools) {
     if (!Array.isArray(tools)) {
         throw new Error('Expected an array of MCP tools from tools/list.');
@@ -592,22 +630,23 @@ function validateMcpTools(tools) {
     });
 }
 
-function buildMcpToolDefinitions(pluginName, mcpTools) {
+function buildMcpToolDefinitions(pluginName, resolvedToolNames) {
     // Claude tool_use format, matching the shape the specialist-agent template
-    // already uses for base.toolDefinitions. The normalized name keeps the
+    // already uses for base.toolDefinitions. `name` is the collision-free
+    // normalized name (see resolveMcpToolNameCollisions), keeping the
     // plugin_<pluginName>_<tool> convention; the original MCP tool name (which
     // may contain dots) is kept alongside as canonical metadata.
-    return mcpTools.map(t => ({
-        name: `plugin_${pluginName}_${normalizeMcpToolName(t.name)}`,
+    return resolvedToolNames.map(({ tool: t, name }) => ({
+        name: `plugin_${pluginName}_${name}`,
         description: t.description || `MCP tool: ${t.name}`,
         input_schema: t.inputSchema || t.input_schema || { type: 'object', properties: {}, required: [] },
         mcpToolName: t.name,
     }));
 }
 
-function buildMcpToolDescriptors(mcpTools) {
-    return mcpTools.map(t => ({
-        name: normalizeMcpToolName(t.name),
+function buildMcpToolDescriptors(resolvedToolNames) {
+    return resolvedToolNames.map(({ tool: t, name }) => ({
+        name,
         canonicalName: t.name,
         description: t.description || '',
         inputSchema: t.inputSchema || t.input_schema || { type: 'object', properties: {} },
@@ -626,16 +665,16 @@ function generateMcpAgentToolsJs(toolDefinitions) {
     return `/**\n * Agent tool definitions, Claude tool_use format, generated from an MCP\n * server's tools/list result.\n * Naming convention: plugin_{pluginId}_{normalized_mcp_tool_name}\n * The original (possibly dotted) MCP tool name is kept as "mcpToolName" for\n * traceability back to the source server.\n */\n\nexport const toolDefinitions = ${JSON.stringify(toolDefinitions, null, 4)};\n`;
 }
 
-function generateMcpToolsDataModule(displayName, sourceCommand, serverName, mcpTools) {
-    const descriptors = buildMcpToolDescriptors(mcpTools);
+function generateMcpToolsDataModule(displayName, sourceCommand, serverName, resolvedToolNames) {
+    const descriptors = buildMcpToolDescriptors(resolvedToolNames);
     return `/**\n * MCP tool descriptors imported from "${serverName || displayName}".\n * Source: ${sourceCommand || '(from a --from-mcp-json file)'}\n *\n * These are metadata only, for listing and display in this plugin. Live\n * invocation of these tools does not happen in the browser plugin sandbox;\n * it is wired through Quox powers (see README.md, "Live execution" section).\n *\n * name          - LLM-safe normalized tool name (dots/dashes replaced with underscores)\n * canonicalName - original MCP tool name as reported by tools/list\n * description   - tool description as reported by the MCP server\n * inputSchema   - JSON Schema for the tool's input, as reported by tools/list\n */\n\nexport const mcpTools = ${JSON.stringify(descriptors, null, 4)};\n`;
 }
 
-function generateMcpReadme(pluginName, displayName, sourceCommand, serverName, mcpTools) {
-    const toolCount = mcpTools.length;
+function generateMcpReadme(pluginName, displayName, sourceCommand, serverName, resolvedToolNames) {
+    const toolCount = resolvedToolNames.length;
     const generatedAt = new Date().toISOString();
-    const toolLines = mcpTools
-        .map(t => `- \`${normalizeMcpToolName(t.name)}\` (from \`${t.name}\`): ${t.description || 'no description provided'}`)
+    const toolLines = resolvedToolNames
+        .map(({ tool: t, name }) => `- \`${name}\` (from \`${t.name}\`): ${t.description || 'no description provided'}`)
         .join('\n');
 
     return `# ${displayName}
@@ -874,8 +913,9 @@ function getTemplateFiles(pluginName, displayName, author, description, category
             files['src/components/AgentChat.jsx'] = generateAgentChat(pluginName, displayName);
             files['src/data/mock.js'] = generateSpecialistMock(displayName);
             if (mcpData) {
-                files['src/data/mcp-tools.js'] = generateMcpToolsDataModule(displayName, mcpData.sourceCommand, mcpData.serverName, mcpData.mcpTools);
-                files['README.md'] = generateMcpReadme(pluginName, displayName, mcpData.sourceCommand, mcpData.serverName, mcpData.mcpTools);
+                const resolvedToolNames = mcpData.resolvedToolNames || resolveMcpToolNameCollisions(mcpData.mcpTools).resolved;
+                files['src/data/mcp-tools.js'] = generateMcpToolsDataModule(displayName, mcpData.sourceCommand, mcpData.serverName, resolvedToolNames);
+                files['README.md'] = generateMcpReadme(pluginName, displayName, mcpData.sourceCommand, mcpData.serverName, resolvedToolNames);
             }
             break;
 
@@ -1047,6 +1087,19 @@ async function main() {
                 };
             }
             console.log(`Found ${mcpData.mcpTools.length} MCP tool(s)${mcpData.serverName ? ` from "${mcpData.serverName}"` : ''}.`);
+
+            // Resolve normalized-name collisions once, up front, so every generator
+            // (manifest, tools.js, mcp-tools.js, README) uses the exact same
+            // disambiguated names.
+            const { resolved, renames } = resolveMcpToolNameCollisions(mcpData.mcpTools);
+            mcpData.resolvedToolNames = resolved;
+            mcpData.toolNameCollisions = renames;
+            if (renames.length) {
+                console.warn(`\nWarning: ${renames.length} MCP tool name(s) collided after normalization and were renamed to stay unique:`);
+                renames.forEach(r => {
+                    console.warn(`  "${r.canonicalName}" normalizes to "${r.normalizedName}", which is already taken -> renamed to "${r.disambiguatedName}"`);
+                });
+            }
         } catch (err) {
             console.error(`MCP introspection failed: ${err.message}`);
             process.exit(1);

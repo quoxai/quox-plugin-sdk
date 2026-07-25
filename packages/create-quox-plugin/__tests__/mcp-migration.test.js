@@ -238,6 +238,74 @@ describe('create-quox-plugin --from-mcp / --from-mcp-json (full scaffold)', () =
         });
     });
 
+    describe('MCP tool name collision disambiguation (a.b, a_b, a-b all normalize to a_b)', () => {
+        function scaffoldFromMcpJson(name, jsonData, { captureStderr = false } = {}) {
+            const jsonFile = path.join(tmpDir, `${name}-tools.json`);
+            fs.writeFileSync(jsonFile, JSON.stringify(jsonData));
+            const pluginDir = path.join(tmpDir, name);
+            const command = `node ${CREATE_SCRIPT} ${name} --from-mcp-json ${jsonFile}${captureStderr ? ' 2>&1' : ''}`;
+            const stdout = execSync(command, { cwd: tmpDir, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
+            return { pluginDir, stdout };
+        }
+
+        const collidingTools = {
+            serverInfo: { name: 'collision-server' },
+            tools: [
+                { name: 'a.b', description: 'dotted', inputSchema: { type: 'object', properties: {} } },
+                { name: 'a_b', description: 'underscored', inputSchema: { type: 'object', properties: {} } },
+                { name: 'a-b', description: 'dashed', inputSchema: { type: 'object', properties: {} } },
+            ],
+        };
+
+        it('disambiguates all three into distinct plugin tool names, in input order', () => {
+            const { pluginDir } = scaffoldFromMcpJson('test-mcp-collide', collidingTools);
+            const manifest = readManifest(pluginDir);
+            const names = manifest.toolDefinitions.map(t => t.name);
+            expect(names).toEqual([
+                'plugin_test-mcp-collide_a_b',
+                'plugin_test-mcp-collide_a_b_2',
+                'plugin_test-mcp-collide_a_b_3',
+            ]);
+            expect(new Set(names).size).toBe(3);
+            expect(manifest.agentDefinition.tools).toEqual(expect.arrayContaining(names));
+        });
+
+        it('keeps each tool\'s original dotted/underscored/dashed name as canonical metadata', () => {
+            const { pluginDir } = scaffoldFromMcpJson('test-mcp-collide2', collidingTools);
+            const manifest = readManifest(pluginDir);
+            const byCanonical = Object.fromEntries(manifest.toolDefinitions.map(t => [t.mcpToolName, t.name]));
+            expect(byCanonical['a.b']).toBe('plugin_test-mcp-collide2_a_b');
+            expect(byCanonical['a_b']).toBe('plugin_test-mcp-collide2_a_b_2');
+            expect(byCanonical['a-b']).toBe('plugin_test-mcp-collide2_a_b_3');
+        });
+
+        it('prints a clear console warning listing every rename', () => {
+            const { stdout } = scaffoldFromMcpJson('test-mcp-collide3', collidingTools, { captureStderr: true });
+            expect(stdout).toMatch(/2 MCP tool name\(s\) collided after normalization/);
+            expect(stdout).toContain('"a_b" normalizes to "a_b", which is already taken -> renamed to "a_b_2"');
+            expect(stdout).toContain('"a-b" normalizes to "a_b", which is already taken -> renamed to "a_b_3"');
+        });
+
+        it('records the rename mapping in manifest mcpProvenance.toolNameCollisions', () => {
+            const { pluginDir } = scaffoldFromMcpJson('test-mcp-collide4', collidingTools);
+            const manifest = readManifest(pluginDir);
+            expect(manifest.mcpProvenance.toolNameCollisions).toEqual([
+                { canonicalName: 'a_b', normalizedName: 'a_b', disambiguatedName: 'a_b_2' },
+                { canonicalName: 'a-b', normalizedName: 'a_b', disambiguatedName: 'a_b_3' },
+            ]);
+        });
+
+        it('keeps all three canonical names distinguishable in src/data/mcp-tools.js', () => {
+            const { pluginDir } = scaffoldFromMcpJson('test-mcp-collide5', collidingTools);
+            const content = fs.readFileSync(path.join(pluginDir, 'src/data/mcp-tools.js'), 'utf8');
+            expect(content).toContain('"a.b"');
+            expect(content).toContain('"a_b"');
+            expect(content).toContain('"a-b"');
+            expect(content).toContain('"a_b_2"');
+            expect(content).toContain('"a_b_3"');
+        });
+    });
+
     describe('error paths', () => {
         it('exits non-zero when both --from-mcp and --from-mcp-json are passed', () => {
             expect(() => execSync(
