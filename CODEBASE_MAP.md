@@ -1,104 +1,350 @@
-<!-- Last verified: 2026-07-03 by /codebase-mirror -->
+# CODEBASE_MAP.md — quox-plugin-sdk
 
-# QuoxCORE Plugin SDK — Codebase Map
+> Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
+> Last updated: 2026-07-27
 
-> **Version:** 0.1.0 (monorepo root private) · **Stack:** Node.js npm-workspaces + Vite + Vitest + TS defs · **Repo:** github.com/quoxai/quox-plugin-sdk
+## Overview
 
-Toolkit for building, testing, signing, and distributing third-party QuoxCORE plugins. npm workspaces
-(`packages/*`), 4 published packages, Ed25519 signing scripts, and a template-driven scaffolder.
+The QuoxCORE Plugin SDK is a **npm workspace monorepo** containing tools for building, testing, signing, and distributing third-party plugins for the QuoxCORE platform.
 
----
-
-## Metrics
-
-| Metric | Count |
-|--------|-------|
-| Workspace packages | 4 |
-| Runtime helpers (`index.js` exports) | 3 |
-| PluginPermission values | 7 |
-| Scaffolder templates | 8 |
-| Scaffolder categories | 7 |
-| Signing/license scripts | 3 |
-| Docs (top-level `.md`) | 6 |
-| Tutorials | 7 |
-| Test files (`*.test.js`) | 6 |
-| Examples dir | none |
+```
+quox-plugin-sdk/
+├── packages/
+│   ├── create-quox-plugin/    # Interactive scaffolder (npx create-quox-plugin)
+│   ├── quox-plugin-sdk/       # Runtime helpers, types, testing utilities
+│   ├── quox-plugin-vite/      # Vite build plugin for .quoxplugin output
+│   └── eslint-plugin-quox-plugin/  # ESLint rules for plugin authors
+├── scripts/                   # Signing and licensing utilities
+├── docs/                      # Documentation and tutorials
+└── .claude/                   # Claude Code skill for AI-assisted dev
+```
 
 ---
 
-## Registration Chains
+## Package: create-quox-plugin
 
-**Add a template:** append entry to the `TEMPLATES` array in
-`packages/create-quox-plugin/bin/create.js` (`{ name, description, suggestedCategory }`) → add the
-generator branch producing `manifest.json` + `src/` scaffold → document in `docs/templates.md` +
-`docs/tutorials/`.
+**Purpose:** Interactive scaffolder for new plugins. Run `npx create-quox-plugin my-plugin`.
 
-**Add a PluginPermission:** extend the `PluginPermission` union in
-`packages/quox-plugin-sdk/src/types.d.ts` → document it in `docs/plugin-api.md` → enforce in host.
+| File | Description |
+|------|-------------|
+| `bin/create.js` | CLI entry point (1143 lines). Parses args, prompts for template/metadata, writes project files. Supports `--from-mcp` and `--from-mcp-json` for MCP server migration. |
+| `lib/mcp-introspect.js` | MCP server introspection (207 lines). Spawns stdio server, runs initialize handshake, calls tools/list. Also provides `loadMcpToolsFromJsonFile()` for offline mode. |
+| `templates/` | Template source files (JSX, configs) for each plugin archetype. |
+| `__tests__/create.test.js` | Scaffolder tests |
+| `__tests__/mcp-migration.test.js` | MCP migration mode tests |
 
-**Add a runtime helper:** `export function` in `packages/quox-plugin-sdk/src/index.js` → mock in
-`src/testing.js` → cover in `src/__tests__/index.test.js`.
+### Templates (8 total)
+
+| Template | Description | Key Features |
+|----------|-------------|--------------|
+| `basic` | Minimal hello-world | Sidebar entry only |
+| `monitoring-dashboard` | Grafana-style polling | configSchema, nocIntegration, usePolling hook |
+| `fleet-management` | Host/container management | safety gates, AEE audit, ConfirmModal |
+| `service-bridge` | Third-party integration | OAuth, specialist agent, AgentSidebar |
+| `ui-feature` | Client-side productivity | storage, EmptyState, tier comparison |
+| `enterprise-extension` | Multi-tier with backend | memory, AOCL, Dockerfile, UsageMeter, UpgradeGate |
+| `specialist-agent` | Single specialist agent | agentDefinition, agentPersona, 3 tools, AgentChat, autonomy |
+| `agentic-team` | Multi-agent team | teamDef, 4 agents, 8 tools, policies, TaskQueue, SharedContextPanel |
+
+### Template Directory Structure
+
+```
+templates/
+├── _shared/             # Common files: index.jsx, vite.config.js, .gitignore
+├── basic/src/views/
+├── monitoring-dashboard/src/{views,hooks,data}/
+├── fleet-management/src/{views,components,data}/
+├── service-bridge/src/{views,components,data}/
+├── ui-feature/src/{views,components,data}/
+├── enterprise-extension/src/{views,components,data}/ + backend/
+├── specialist-agent/src/{views,components,agent,data}/
+└── agentic-team/src/{views,components,team,data}/
+```
+
+### MCP Migration Mode
+
+The scaffolder supports converting MCP servers into Quox plugins:
+
+```bash
+# Live introspection
+npx create-quox-plugin my-plugin --from-mcp "npx -y @example/mcp-server"
+
+# Offline from saved tools/list JSON
+npx create-quox-plugin my-plugin --from-mcp-json tools-list.json
+```
+
+Key functions in `create.js`:
+- `resolveMcpToolNameCollisions()` — handles normalized name collisions (e.g. `a.b` and `a-b` both become `a_b`)
+- `buildMcpToolDefinitions()` — converts MCP tool schemas to Claude tool_use format
+- `generateMcpToolsDataModule()` — generates `src/data/mcp-tools.js`
 
 ---
 
-## Authoritative Files
+## Package: quox-plugin-sdk
 
-| File | Purpose | Count |
-|------|---------|-------|
-| `packages/quox-plugin-sdk/src/index.js` | Runtime helpers | getSharedDeps, registerPlugin, getGlassComponents |
-| `packages/quox-plugin-sdk/src/types.d.ts` | PluginManifest / PluginAPI / PluginExports + 7 permissions | — |
-| `packages/quox-plugin-sdk/src/testing.js` | Mock API + test env | createMockPluginApi, setup/teardownPluginTestEnv, setupGlassMocks |
-| `packages/create-quox-plugin/bin/create.js` | Scaffolder CLI | 8 templates, 7 categories |
-| `packages/quox-plugin-vite/src/index.js` | Vite build plugin | externals + ZIP packaging |
-| `scripts/*.js` | Ed25519 keygen, sign, license | 3 |
+**Purpose:** Core runtime helpers, TypeScript types, and testing utilities.
+
+| File | Description |
+|------|-------------|
+| `src/index.js` | Runtime exports (38 lines): `getSharedDeps()`, `registerPlugin()`, `getGlassComponents()` |
+| `src/types.d.ts` | Full TypeScript definitions (588 lines): Manifest, PluginAPI, Agent types, Team types, Glass components |
+| `src/testing.js` | Test harness (146 lines): `createMockPluginApi()`, `setupPluginTestEnv()`, `setupGlassMocks()` |
+| `src/__tests__/index.test.js` | Runtime helper tests |
+| `src/__tests__/testing.test.js` | Testing utility tests |
+
+### Exported Functions
+
+```js
+// Runtime helpers (index.js)
+getSharedDeps()       // → { React, ReactDOM, ReactRouterDOM }
+registerPlugin(id, exports)
+getGlassComponents()  // → { AgentChatSidebar, GlassPanel, GlassPill, ... }
+
+// Testing utilities (testing.js)
+createMockPluginApi(pluginId)   // Mock PluginAPI with in-memory storage
+setupPluginTestEnv()            // Install window.__quoxSharedDeps mocks
+teardownPluginTestEnv()
+setupGlassMocks()               // Mock @quox/glass components
+```
+
+### Key Types (types.d.ts)
+
+| Type | Purpose |
+|------|---------|
+| `PluginManifest` | manifest.json schema (35 fields) |
+| `PluginAPI` | Runtime API: cache, durable, secrets, memory, aee, navigate, chat |
+| `PluginExports` | { routes, sidebar, hooks } |
+| `AgentDefinition` | Full agent spec: role, autonomy, tools, defconLevel |
+| `AgentPersona` | UI persona: color, voice, LLM config |
+| `TeamDefinition` | Multi-agent team: members, policies, sharedContext |
+| `ToolDefinition` | Claude tool_use format |
+| `SafetyConfig` | destructiveActions, requiresApproval, killSwitchEnabled |
+| `QuoxGlassComponents` | Full interface for window.__quoxGlass |
+
+### PluginAPI Persistence Model
+
+```
+api.cache    — browser-only, ephemeral (localStorage). Use for UI state only.
+api.durable  — server-backed, org/user scoped. Survives browser resets.
+api.secrets  — encrypted at rest server-side. Audit-logged reads.
+api.memory   — long-form facts/observations into QuoxCORE memory service.
+```
 
 ---
 
-## Invariants
+## Package: quox-plugin-vite
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Every PluginPermission documented in `docs/plugin-api.md` | ⚠ warn | `network`, `memory`, `notifications`, `aee` found; `sidebar` + `tools` absent; `storage` deprecated |
-| Templates buildable | ⚠ warn | 8 templates defined with generators; not build-verified in this scan |
-| Scripts referenced in docs exist | ✓ pass | `signing.md` cites 3 scripts, all present in `scripts/` |
+**Purpose:** Vite build plugin. Externalizes shared deps, outputs `.quoxplugin` ZIP.
+
+| File | Description |
+|------|-------------|
+| `src/index.js` | Main Vite plugin (497 lines). Build config, import rewriting, dev host injection, ZIP packaging. |
+| `src/dev-host/client.js` | Dev preview harness (449 lines). Mounts frame chrome, provides mock `__quoxGlass`, `__quoxPluginApi`. |
+| `src/dev-host/frame-model.js` | Pure model builder (63 lines). Parses manifest + registered exports into frame model. |
+| `src/dev-host/dev-host.css` | Glass design system CSS tokens for dev preview. |
+| `assets/qx-components.css` | Vendored glass component styles. |
+| `scripts/sync-glass-css.mjs` | Syncs CSS from quox-dashboard. |
+| `src/__tests__/*.test.js` | Tests for index, dev-host, frame-model, external-globals |
+
+### Build Pipeline
+
+1. **config hook:** Sets rollup externals, proxy to live QuoxCORE, port 5174 default
+2. **resolveId hook:** Externalizes `react`, `react-dom`, `react-router-dom`, `@quox/glass` at build time
+3. **renderChunk hook:** Rewrites `import ... from "react"` → `const React = window.__quoxSharedDeps.React;`
+4. **closeBundle hook:** Packages `dist/` + `manifest.json` → `{pluginId}.quoxplugin` ZIP
+
+### External Globals Map
+
+```js
+'react'              → window.__quoxSharedDeps.React
+'react/jsx-runtime'  → window.__quoxSharedDeps.ReactJSXRuntime
+'react/jsx-dev-runtime' → window.__quoxSharedDeps.ReactJSXRuntime
+'react-dom'          → window.__quoxSharedDeps.ReactDOM
+'react-dom/client'   → window.__quoxSharedDeps.ReactDOM
+'react-router-dom'   → window.__quoxSharedDeps.ReactRouterDOM
+'@quox/glass'        → window.__quoxGlass
+```
+
+### Dev Host Features
+
+- Injects `<link>` and `<script>` tags for dev-host chrome (CSS, manifest, client)
+- Serves default `index.html` for scaffolds without one
+- Virtual module `virtual:quox-dev-host` bootstraps deps from plugin project
+- Mounts rail navigation, header, route switching
+- Provides mock glass components: `AgentChatSidebar`, `AgentChatPanel`, `GlassPanel`, `GlassPill`, `GlassTabBar`, `SectionHeader`, `ProgressRing`, `Sparkline`, `GlassSkeleton`, `GlassError`, `MarkdownContent`
+- Mock `pluginApi` with in-memory cache/durable/secrets
+- Hash-router shim for plugins without react-router-dom
+- Escape hatch: `?bare=1` skips dev host entirely
 
 ---
 
-## Packages (4)
+## Package: eslint-plugin-quox-plugin
 
-| Package | Version | Entry | Role |
-|---------|---------|-------|------|
-| `quox-plugin-sdk` | 0.1.0 | `src/index.js` | Runtime helpers, types, testing utils |
-| `quox-plugin-vite` | 0.1.0 | `src/index.js` (CJS) | Vite plugin: externalize shared deps, `.quoxplugin` ZIP |
-| `create-quox-plugin` | 0.1.0 | `bin/create.js` | Interactive scaffolder |
-| `eslint-plugin-quox-plugin` | 0.1.0 | `src/index.js` (ESM) | `no-cache-as-primary-storage` rule |
+**Purpose:** ESLint rules to catch common plugin mistakes at build time.
 
-## PluginPermission Union (7)
+| File | Description |
+|------|-------------|
+| `src/index.js` | Plugin entry (29 lines). Exports rules and recommended config. |
+| `src/rules/no-cache-as-primary-storage.js` | Rule implementation (86 lines). Lexical member-expression text match. |
+| `src/__tests__/no-cache-as-primary-storage.test.js` | Rule tests |
 
-`sidebar`, `storage` (deprecated alias of cache), `network`, `memory`, `notifications`, `aee`, `tools`.
+### Rules
 
-## Templates (8) & Categories (7)
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `no-cache-as-primary-storage` | warn | Flags `api.cache.set` when `api.durable`/`api.memory` never used in same module. |
 
-Templates: `basic`, `monitoring-dashboard`, `fleet-management`, `service-bridge`, `ui-feature`,
-`enterprise-extension`, `specialist-agent`, `agentic-team`. Categories: Monitoring, Productivity,
-Communication, AI & Intelligence, Infrastructure, Compliance & Audit, Other.
+Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api.durable`).
 
-## PluginAPI Persistence Tiers
+---
 
-`api.cache.*` (ephemeral localStorage) · `api.storage.*` (deprecated) · `api.durable.*` (server,
-org/user-scoped) · `api.secrets.*` (encrypted, audit-logged) · `api.config.*` · `api.memory.*` ·
-`api.aee.*` · `api.fetch()` (proxied) · `api.notify()`.
+## Scripts (root /scripts)
 
-## Global Integration Points
+| Script | Purpose |
+|--------|---------|
+| `generate-signing-key.js` | Generate Ed25519 keypair for plugin signing (47 lines) |
+| `sign-plugin.js` | Sign a `.quoxplugin` with private key, injects `signature.json` (139 lines) |
+| `generate-license.js` | Generate license key for paid plugins |
+| `__tests__/sign-plugin.test.js` | Signing flow tests |
 
-`window.__quoxSharedDeps` (React/ReactDOM/ReactRouterDOM), `window.__quoxGlass` (@quox/glass v1.1+),
-`window.__quoxPluginRegister(id, exports)`, `window.__quoxPluginApi[pluginId]`.
+### Signing Flow
 
-## Docs (6 + 7 tutorials)
+1. `generate-signing-key.js` → `quox-signing.key` (private, mode 0600) + `quox-signing.pub` (public)
+2. `sign-plugin.js --plugin x.quoxplugin --key quox-signing.key`
+   - Extracts `manifest.json` from ZIP
+   - Computes SHA-256 digest of canonical JSON (sorted keys, no existing signature)
+   - Signs digest with Ed25519
+   - Injects `signature.json` into ZIP with: keyId, digest, signature, algorithm, timestamp, pluginId, pluginVersion
 
-`getting-started.md`, `plugin-api.md`, `templates.md`, `backend-plugins.md`, `signing.md`,
-`claude-skill.md`, plus `tutorials/` (7 guides).
+---
 
-## Size Constraints
+## Docs
 
-Bundle `plugin.esm.js` ≤ 100 KB · `.quoxplugin` ZIP ≤ 5 MB · Plugin ID 3–64 chars.
+| File | Description |
+|------|-------------|
+| `getting-started.md` | Step-by-step first plugin guide |
+| `templates.md` | All 8 templates compared with feature matrix |
+| `plugin-api.md` | Full PluginAPI reference (21KB) |
+| `backend-plugins.md` | Docker backend service integration |
+| `signing.md` | Ed25519 signatures and verification |
+| `claude-skill.md` | AI-assisted plugin development |
+| `suggested-rules.md` | Pattern: ship suggested rules with plugins/skills |
+| `plan-sdk-dx.md` | Internal DX improvement plan |
+
+### Tutorials (docs/tutorials/)
+
+| File | Template |
+|------|----------|
+| `agentic-team.md` | Multi-agent team walkthrough |
+| `convert-mcp-server.md` | MCP to Quox plugin migration guide |
+| `enterprise-extension.md` | Multi-tier enterprise plugin |
+| `fleet-management.md` | Host/container management |
+| `monitoring-dashboard.md` | Polling-based monitoring |
+| `service-bridge.md` | Third-party service integration |
+| `specialist-agent.md` | Single agent with tools |
+| `ui-feature.md` | Client-side productivity features |
+
+---
+
+## Claude Skill (.claude/skills/quox-plugin/)
+
+| File | Description |
+|------|-------------|
+| `SKILL.md` | Full skill definition (183 lines). 5 modes: scaffold, manifest, debug, extend, review. |
+
+**Modes:**
+- `scaffold` — Template selection guidance
+- `manifest` — Manifest editing with field reference
+- `debug` — Common issues and fixes (dark theme, permissions, build failures)
+- `extend` — Adding capabilities (views, backend, tools, AEE, memory, settings)
+- `review` — Plugin audit checklist
+
+---
+
+## Key Entry Points
+
+| Action | Command / Path |
+|--------|----------------|
+| Scaffold new plugin | `npx create-quox-plugin my-plugin` |
+| Scaffold from MCP | `npx create-quox-plugin my-plugin --from-mcp "command"` |
+| Dev server | `npm run dev` (in plugin project, port 5174) |
+| Build plugin | `npm run build` → `{id}.quoxplugin` |
+| Run SDK tests | `npm test` (root) |
+| Sign plugin | `node scripts/sign-plugin.js --plugin X --key Y` |
+| Generate keys | `node scripts/generate-signing-key.js` |
+
+---
+
+## Dependencies
+
+| Package | Role |
+|---------|------|
+| `vite` (peer) | Build system for quox-plugin-vite |
+| `eslint` (peer) | ESLint for eslint-plugin-quox-plugin |
+| `adm-zip` (dev) | ZIP creation for .quoxplugin packaging |
+| `vitest` (dev) | Test runner |
+| `jsdom` (dev) | DOM environment for tests |
+
+---
+
+## Related Repos
+
+| Repo | Relationship |
+|------|--------------|
+| `quox-dashboard` | Host platform. Runs plugins via `thirdPartyPluginHost.js`. |
+| `@quox/glass` | Component library exposed as `window.__quoxGlass`. |
+| `quoxflow` | Workflow engine for agent autonomy. |
+| `quoxmcp` | MCP server for Claude Code integration. |
+
+---
+
+## Testing
+
+```bash
+# Run all SDK tests
+npm test
+
+# Tests cover:
+# - packages/quox-plugin-sdk: runtime helpers, testing utilities
+# - packages/eslint-plugin-quox-plugin: rule detection
+# - packages/quox-plugin-vite: config generation, import rewriting, dev host
+# - packages/create-quox-plugin: scaffolder output, MCP migration
+# - scripts: signing flow
+```
+
+---
+
+## File Count Summary
+
+| Directory | Source Files |
+|-----------|--------------|
+| `packages/create-quox-plugin/` | 3 core (bin, lib) + ~50 template files |
+| `packages/quox-plugin-sdk/src/` | 3 (index.js, types.d.ts, testing.js) |
+| `packages/quox-plugin-vite/src/` | 4 (index.js, dev-host/*) |
+| `packages/eslint-plugin-quox-plugin/src/` | 2 (index.js, rules/*) |
+| `scripts/` | 3 |
+| `docs/` | 10 + 8 tutorials |
+
+---
+
+## Architecture Notes
+
+### Plugin Activation Flow
+
+1. QuoxCORE loads plugin.esm.js via blob URL `<script type="module">`
+2. Plugin entry calls `window.__quoxPluginRegister(pluginId, exports)`
+3. Host activates routes, sidebar entries, and lifecycle hooks
+4. Plugin accesses host APIs via `window.__quoxPluginApi[pluginId]`
+
+### Host-Provided Globals
+
+```js
+window.__quoxSharedDeps     // { React, ReactDOM, ReactRouterDOM, ReactJSXRuntime }
+window.__quoxGlass          // Glass component library
+window.__quoxPluginApi      // PluginAPI instances keyed by pluginId
+window.__quoxPluginRegister // Registration function
+```
+
+### Dev Host Virtual Module
+
+The dev host uses a virtual module (`virtual:quox-dev-host`) to resolve React/ReactDOM from the plugin project's node_modules rather than the SDK repo. This prevents duplicate React instances and hook failures.
