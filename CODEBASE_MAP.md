@@ -1,6 +1,6 @@
 # CODEBASE_MAP.md — quox-plugin-sdk
 
-<!-- Last verified: 2026-07-27T12:00Z by /codebase-mirror -->
+<!-- Last verified: 2026-08-11 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
 
@@ -19,6 +19,8 @@ quox-plugin-sdk/
 ├── docs/                      # Documentation and tutorials
 └── .claude/                   # Claude Code skill for AI-assisted dev
 ```
+
+All packages are version 0.1.0. Root scripts: `npm run build` (all workspaces), `npm test` (vitest run, whole repo).
 
 ## Metrics
 
@@ -41,9 +43,10 @@ quox-plugin-sdk/
 |------|-------------|
 | `bin/create.js` | CLI entry point (1142 lines). Parses args, prompts for template/metadata, writes project files. Supports `--from-mcp` and `--from-mcp-json` for MCP server migration. |
 | `lib/mcp-introspect.js` | MCP server introspection (206 lines). Spawns stdio server, runs initialize handshake, calls tools/list. Also provides `loadMcpToolsFromJsonFile()` for offline mode. |
+| `scripts/scaffold-snapshot.mjs` | Scaffold snapshot helper for tests. |
 | `templates/` | Template source files (JSX, configs) for each plugin archetype. |
 | `__tests__/create.test.js` | Scaffolder tests |
-| `__tests__/mcp-migration.test.js` | MCP migration mode tests |
+| `__tests__/mcp-migration.test.js` | MCP migration mode tests (uses `__tests__/fixtures/fake-mcp-server.js`) |
 
 ### Templates (8 total)
 
@@ -68,7 +71,7 @@ templates/
 ├── fleet-management/src/{views,components,data}/
 ├── service-bridge/src/{views,components,data}/
 ├── ui-feature/src/{views,components,data}/
-├── enterprise-extension/src/{views,components,data}/ + backend/
+├── enterprise-extension/src/{views,components,data}/ + backend/ + Dockerfile
 ├── specialist-agent/src/{views,components,agent,data}/
 └── agentic-team/src/{views,components,team,data}/
 ```
@@ -100,7 +103,7 @@ Key functions in `create.js`:
 |------|-------------|
 | `src/index.js` | Runtime exports (37 lines): `getSharedDeps()`, `registerPlugin()`, `getGlassComponents()` |
 | `src/types.d.ts` | Full TypeScript definitions (587 lines): Manifest, PluginAPI, Agent types, Team types, Glass components |
-| `src/testing.js` | Test harness (145 lines): `createMockPluginApi()`, `setupPluginTestEnv()`, `setupGlassMocks()` |
+| `src/testing.js` | Test harness (145 lines): `createMockPluginApi()`, `setupPluginTestEnv()`, `teardownPluginTestEnv()`, `setupGlassMocks()` |
 | `src/__tests__/index.test.js` | Runtime helper tests |
 | `src/__tests__/testing.test.js` | Testing utility tests |
 
@@ -124,8 +127,9 @@ setupGlassMocks()               // Mock @quox/glass components
 | Type | Purpose |
 |------|---------|
 | `PluginManifest` | manifest.json schema (35 fields) |
-| `PluginAPI` | Runtime API: cache, durable, secrets, memory, aee, navigate, chat |
-| `PluginExports` | { routes, sidebar, hooks } |
+| `PluginAPI` | Runtime API: cache, durable, secrets, config, fetch, notify, memory, aee, navigate, getUser, chat |
+| `PluginExports` | { routes, sidebar, hooks } — hooks incl. onActivate/onDeactivate + PD-5 install lifecycle (onInstall/onUpgrade/onUninstall, onRestore reserved) |
+| `PluginPermission` | 9 values: sidebar, storage, durable, secrets, network, memory, notifications, aee, tools |
 | `AgentDefinition` | Full agent spec: role, autonomy, tools, defconLevel |
 | `AgentPersona` | UI persona: color, voice, LLM config |
 | `TeamDefinition` | Multi-agent team: members, policies, sharedContext |
@@ -137,6 +141,7 @@ setupGlassMocks()               // Mock @quox/glass components
 
 ```
 api.cache    — browser-only, ephemeral (localStorage). Use for UI state only.
+api.storage  — DEPRECATED alias of api.cache (removed in a future minor).
 api.durable  — server-backed, org/user scoped. Survives browser resets.
 api.secrets  — encrypted at rest server-side. Audit-logged reads.
 api.memory   — long-form facts/observations into QuoxCORE memory service.
@@ -184,9 +189,10 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 - Virtual module `virtual:quox-dev-host` bootstraps deps from plugin project
 - Mounts rail navigation, header, route switching
 - Provides mock glass components: `AgentChatSidebar`, `AgentChatPanel`, `GlassPanel`, `GlassPill`, `GlassTabBar`, `SectionHeader`, `ProgressRing`, `Sparkline`, `GlassSkeleton`, `GlassError`, `MarkdownContent`
-- Mock `pluginApi` with in-memory cache/durable/secrets
+- Mock `pluginApi` with in-memory cache/durable/secrets (resets on reload — UI wiring only, not persistence)
+- Injects the parsed manifest as dev-only `window.__quoxDevManifest`
 - Hash-router shim for plugins without react-router-dom
-- Escape hatch: `?bare=1` skips dev host entirely
+- Escape hatch: `?bare=1` (or `devHost: false`) skips dev host entirely
 
 ---
 
@@ -198,7 +204,7 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 |------|-------------|
 | `src/index.js` | Plugin entry (28 lines). Exports rules and recommended config. |
 | `src/rules/no-cache-as-primary-storage.js` | Rule implementation (85 lines). Lexical member-expression text match. |
-| `src/__tests__/no-cache-as-primary-storage.test.js` | Rule tests |
+| `src/__tests__/no-cache-as-primary-storage.test.js` | Rule tests (vitest, converted from node:test) |
 
 ### Rules
 
@@ -236,7 +242,7 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 |------|-------------|
 | `getting-started.md` | Step-by-step first plugin guide |
 | `templates.md` | All 8 templates compared with feature matrix |
-| `plugin-api.md` | Full PluginAPI reference (21KB) |
+| `plugin-api.md` | Full PluginAPI reference (persistence model, glass library, file storage FU-1, agent registration) |
 | `backend-plugins.md` | Docker backend service integration |
 | `signing.md` | Ed25519 signatures and verification |
 | `claude-skill.md` | AI-assisted plugin development |
@@ -262,7 +268,7 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 
 | File | Description |
 |------|-------------|
-| `SKILL.md` | Full skill definition (182 lines). 5 modes: scaffold, manifest, debug, extend, review. |
+| `SKILL.md` | Full skill definition (182 lines). 5 modes: scaffold, manifest, debug, extend, review. Points to canonical `quoxpert-plugin-sdk` skill. |
 
 **Modes:**
 - `scaffold` — Template selection guidance
@@ -313,29 +319,16 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 ## Testing
 
 ```bash
-# Run all SDK tests
+# Run all SDK tests (vitest, from repo root)
 npm test
 
 # Tests cover:
-# - packages/quox-plugin-sdk: runtime helpers, testing utilities
-# - packages/eslint-plugin-quox-plugin: rule detection
-# - packages/quox-plugin-vite: config generation, import rewriting, dev host
-# - packages/create-quox-plugin: scaffolder output, MCP migration
-# - scripts: signing flow
+# - packages/quox-plugin-sdk: runtime helpers, testing utilities (2 files)
+# - packages/eslint-plugin-quox-plugin: rule detection (1 file)
+# - packages/quox-plugin-vite: config generation, import rewriting, dev host (4 files)
+# - packages/create-quox-plugin: scaffolder output, MCP migration (2 files)
+# - scripts: signing flow (1 file)
 ```
-
----
-
-## File Count Summary
-
-| Directory | Source Files |
-|-----------|--------------|
-| `packages/create-quox-plugin/` | 3 core (bin, lib) + 49 template files |
-| `packages/quox-plugin-sdk/src/` | 3 (index.js, types.d.ts, testing.js) |
-| `packages/quox-plugin-vite/src/` | 4 (index.js, dev-host/*) |
-| `packages/eslint-plugin-quox-plugin/src/` | 2 (index.js, rules/*) |
-| `scripts/` | 3 |
-| `docs/` | 8 guides + 8 tutorials |
 
 ---
 
@@ -355,6 +348,7 @@ window.__quoxSharedDeps     // { React, ReactDOM, ReactRouterDOM, ReactJSXRuntim
 window.__quoxGlass          // Glass component library
 window.__quoxPluginApi      // PluginAPI instances keyed by pluginId
 window.__quoxPluginRegister // Registration function
+window.__quoxDevManifest    // Dev-only: parsed manifest.json (never set in production)
 ```
 
 ### Dev Host Virtual Module
@@ -367,7 +361,9 @@ The dev host uses a virtual module (`virtual:quox-dev-host`) to resolve React/Re
 
 | Check | Status | Details |
 |-------|--------|---------|
-| Package count matches workspaces | ✓ pass | 4 packages in packages/ |
+| Package count matches workspaces | ✓ pass | 4 packages in packages/, workspaces glob `packages/*` |
 | All templates have MainView | ✓ pass | 8/8 templates have src/views/MainView.jsx |
-| Signing scripts exist | ✓ pass | 3 scripts in scripts/ |
-| Test coverage | ✓ pass | 10 test files across packages |
+| Signing/licensing scripts exist | ✓ pass | 3 scripts in scripts/, all referenced by docs/signing.md |
+| Test coverage | ✓ pass | 10 test files across packages + scripts |
+| Templates per docs | ✓ pass | 8 templates, 8 matching tutorials in docs/tutorials/ |
+| Permissions documented | ⚠ warn | 7/9 PluginPermission values covered in docs/plugin-api.md; `sidebar` and `tools` have no explicit "Requires" section (`storage` covered as deprecated alias of `cache`) |
