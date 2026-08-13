@@ -102,7 +102,7 @@ Key functions in `create.js`:
 | File | Description |
 |------|-------------|
 | `src/index.js` | Runtime exports (37 lines): `getSharedDeps()`, `registerPlugin()`, `getGlassComponents()` |
-| `src/types.d.ts` | Full TypeScript definitions (587 lines): Manifest, PluginAPI, Agent types, Team types, Glass components |
+| `src/types.d.ts` | Full TypeScript definitions (587 lines, 40 exported types): Manifest, PluginAPI, Agent types, Team types, Glass components |
 | `src/testing.js` | Test harness (145 lines): `createMockPluginApi()`, `setupPluginTestEnv()`, `teardownPluginTestEnv()`, `setupGlassMocks()` |
 | `src/__tests__/index.test.js` | Runtime helper tests |
 | `src/__tests__/testing.test.js` | Testing utility tests |
@@ -126,7 +126,7 @@ setupGlassMocks()               // Mock @quox/glass components
 
 | Type | Purpose |
 |------|---------|
-| `PluginManifest` | manifest.json schema (35 fields) |
+| `PluginManifest` | manifest.json schema (33 fields incl. nested backend/team/marketing sub-fields) |
 | `PluginAPI` | Runtime API: cache, durable, secrets, config, fetch, notify, memory, aee, navigate, getUser, chat |
 | `PluginExports` | { routes, sidebar, hooks } — hooks incl. onActivate/onDeactivate + PD-5 install lifecycle (onInstall/onUpgrade/onUninstall, onRestore reserved) |
 | `PluginPermission` | 9 values: sidebar, storage, durable, secrets, network, memory, notifications, aee, tools |
@@ -160,15 +160,16 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 | `src/dev-host/frame-model.js` | Pure model builder (62 lines). Parses manifest + registered exports into frame model. |
 | `src/dev-host/dev-host.css` | Glass design system CSS tokens for dev preview. |
 | `assets/qx-components.css` | Vendored glass component styles. |
-| `scripts/sync-glass-css.mjs` | Syncs CSS from quox-dashboard. |
+| `scripts/sync-glass-css.mjs` | Syncs CSS from quox-dashboard (`npm run sync-glass-css`). |
 | `src/__tests__/*.test.js` | Tests for index, dev-host, frame-model, external-globals |
 
-### Build Pipeline
+### Build Pipeline (hooks in src/index.js)
 
 1. **config hook:** Sets rollup externals, proxy to live QuoxCORE, port 5174 default
-2. **resolveId hook:** Externalizes `react`, `react-dom`, `react-router-dom`, `@quox/glass` at build time
+2. **resolveId / load hooks:** Externalizes shared deps; serves `virtual:quox-dev-host` module
 3. **renderChunk hook:** Rewrites `import ... from "react"` → `const React = window.__quoxSharedDeps.React;`
-4. **closeBundle hook:** Packages `dist/` + `manifest.json` → `{pluginId}.quoxplugin` ZIP
+4. **configureServer / transformIndexHtml hooks:** Dev host injection, default index.html for scaffolds
+5. **closeBundle hook:** Packages `dist/` + `manifest.json` → `{pluginId}.quoxplugin` ZIP
 
 ### External Globals Map
 
@@ -204,7 +205,7 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 |------|-------------|
 | `src/index.js` | Plugin entry (28 lines). Exports rules and recommended config. |
 | `src/rules/no-cache-as-primary-storage.js` | Rule implementation (85 lines). Lexical member-expression text match. |
-| `src/__tests__/no-cache-as-primary-storage.test.js` | Rule tests (vitest, converted from node:test) |
+| `src/__tests__/no-cache-as-primary-storage.test.js` | Rule tests (vitest) |
 
 ### Rules
 
