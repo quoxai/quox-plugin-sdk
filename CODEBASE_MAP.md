@@ -1,6 +1,6 @@
 # CODEBASE_MAP.md — quox-plugin-sdk
 
-<!-- Last verified: 2026-08-13 by /codebase-mirror -->
+<!-- Last verified: 2026-08-14 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
 
@@ -165,7 +165,7 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 
 ### Build Pipeline (hooks in src/index.js)
 
-1. **config hook:** Sets rollup externals, proxy to live QuoxCORE, port 5174 default
+1. **config / configResolved hooks:** Sets rollup externals, proxy to live QuoxCORE, port 5174 default; captures resolved config
 2. **resolveId / load hooks:** Externalizes shared deps; serves `virtual:quox-dev-host` module
 3. **renderChunk hook:** Rewrites `import ... from "react"` → `const React = window.__quoxSharedDeps.React;`
 4. **configureServer / transformIndexHtml hooks:** Dev host injection, default index.html for scaffolds
