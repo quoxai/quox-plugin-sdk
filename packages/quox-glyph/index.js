@@ -39,6 +39,9 @@ let forced = null;
 export function setColor(v) { forced = v; }
 function on() {
   if (forced !== null) return forced;
+  const env = process.env.QUOX_COLOR;
+  if (env === '0') return false;
+  if (env === '1' || env === '2') return true;
   return Boolean(process.stdout && process.stdout.isTTY) && !process.env.NO_COLOR;
 }
 

@@ -43,3 +43,14 @@ test('lifecycle events render the contract shapes', () => {
   assert.equal(events.progressed('quoxplan', 'phase 5 ticked', 'X-1', 5, 8),
     '🧭 QUOXPLAN │ phase 5 ticked │ X-1 ▰▰▰▰▰▱▱▱ 5/8');
 });
+
+test('QUOX_COLOR=2 forces colour even when not a tty', () => {
+  setColor(null);
+  process.env.QUOX_COLOR = '2';
+  try {
+    assert.match(meter(50, 8), /\x1b\[38;2;/);
+  } finally {
+    delete process.env.QUOX_COLOR;
+    setColor(false);
+  }
+});
