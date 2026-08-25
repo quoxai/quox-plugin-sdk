@@ -1,0 +1,13 @@
+{
+  "name": "@quox/glyph",
+  "version": "0.1.0",
+  "description": "QuoxGlyph terminal output language: the canonical JS renderer (grammar lines, gradient meters, lifecycle events). Spec-carrying package; all JS Quox CLIs consume this instead of hand-porting.",
+  "type": "module",
+  "main": "index.js",
+  "exports": { ".": "./index.js" },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": ["quox", "quoxglyph", "terminal", "cli"],
+  "license": "UNLICENSED"
+}
