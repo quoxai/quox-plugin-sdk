@@ -71,3 +71,19 @@ into every quoxpert sub-skill and every dev-tool skill, and publishing the
 blocks on the website docs. When you author a new template, skill, or plugin
 with this SDK, include the block from day one; a reviewer should treat a
 missing Suggested Rules section the same as a missing `configSchema` field.
+
+## Terminal output: the QuoxGlyph grammar
+
+If your plugin ships a CLI or prints to a terminal, conform to the QuoxGlyph
+line grammar so it reads as part of the Quox family:
+
+```
+<icon> NAME │ <verb object> │ <result> · <duration>
+📡 MYPLUGIN │ sync accounts │ 12 updated · 800ms ✔
+```
+
+Separator U+2502, status glyphs ✔ ✖ ◐ ⚠ ⛔, duration last. Claim a distinct
+icon (do not reuse a core surface's icon), keep announce lines to one line, and
+degrade colour when stdout is not a tty. Meters use the brand gradient
+(#38bdf8 to #a855f7). Reference renderer: `quox-say` in the quox-skills repo;
+conformance check: `glyph-lint.sh`. A future SDK release will ship both.
