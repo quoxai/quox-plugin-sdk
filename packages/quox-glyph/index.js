@@ -25,6 +25,7 @@ export const ICONS = {
   repobrain: '🧠 REPOBRAIN', clarify: '🔍 CLARIFY', qlarity: '🔍 QLARITY',
   quoxplan: '🧭 QUOXPLAN', doneengine: '🏁 DONEENGINE', quoxbuild: '🔨 QUOXBUILD',
   quoxsignal: '📡 QUOXSIGNAL', bastion: '🛰️ BASTION', precompact: '🧿 PRECOMPACT',
+  brain2: '🌌 BRAIN2',
   quox: 'Ⓠ QUOX'
 };
 export const BUDGETS = { VERB_MAX: 48, RESULT_MAX: 40, LINE_MAX: 120, TREE_MAX: 6, TABLE_MAX: 6 };
