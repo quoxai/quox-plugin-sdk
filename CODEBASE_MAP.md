@@ -1,23 +1,24 @@
 # CODEBASE_MAP.md — quox-plugin-sdk
 
-<!-- Last verified: 2026-08-21 by /codebase-mirror -->
+<!-- Last verified: 2026-09-06 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
 
 ## Overview
 
-The QuoxCORE Plugin SDK is a **npm workspace monorepo** containing tools for building, testing, signing, and distributing third-party plugins for the QuoxCORE platform.
+The QuoxCORE Plugin SDK is a **npm workspace monorepo** containing tools for building, testing, signing, and distributing third-party plugins for the QuoxCORE platform, plus the canonical QuoxGlyph terminal renderer.
 
 ```
 quox-plugin-sdk/
 ├── packages/
-│   ├── create-quox-plugin/    # Interactive scaffolder (npx create-quox-plugin)
-│   ├── quox-plugin-sdk/       # Runtime helpers, types, testing utilities
-│   ├── quox-plugin-vite/      # Vite build plugin for .quoxplugin output
-│   └── eslint-plugin-quox-plugin/  # ESLint rules for plugin authors
-├── scripts/                   # Signing and licensing utilities
-├── docs/                      # Documentation and tutorials
-└── .claude/                   # Claude Code skill for AI-assisted dev
+│   ├── create-quox-plugin/         # Interactive scaffolder (npx create-quox-plugin)
+│   ├── quox-plugin-sdk/            # Runtime helpers, types, testing utilities
+│   ├── quox-plugin-vite/           # Vite build plugin for .quoxplugin output
+│   ├── eslint-plugin-quox-plugin/  # ESLint rules for plugin authors
+│   └── quox-glyph/                 # @quox/glyph — QuoxGlyph terminal output renderer
+├── scripts/                        # Signing and licensing utilities
+├── docs/                           # Documentation and tutorials
+└── .claude/                        # Claude Code skill for AI-assisted dev
 ```
 
 All packages are version 0.1.0. Root scripts: `npm run build` (all workspaces), `npm test` (vitest run, whole repo).
@@ -26,12 +27,13 @@ All packages are version 0.1.0. Root scripts: `npm run build` (all workspaces), 
 
 | Metric | Count |
 |--------|-------|
-| Packages | 4 |
+| Packages | 5 |
 | Templates | 8 |
-| Test Files | 10 |
+| Test Files | 11 |
 | Docs | 16 (8 guides + 8 tutorials) |
 | Scripts | 3 |
 | ESLint Rules | 1 |
+| Glyph icons registered | 11 |
 
 ---
 
@@ -197,6 +199,42 @@ api.memory   — long-form facts/observations into QuoxCORE memory service.
 
 ---
 
+## Package: quox-glyph (@quox/glyph)
+
+**Purpose:** Canonical JS implementation of the QuoxGlyph terminal output language (DEVSUITE-GLYPH). Spec-carrying package: all JS Quox CLIs consume this instead of hand-porting; the spec lives at quox-skills `quoxify/references/quoxglyph-spec.md`.
+
+| File | Description |
+|------|-------------|
+| `index.js` | Full renderer (129 lines). ESM, zero deps. Truecolor with plain-text degrade (`!isTTY`, `NO_COLOR`, `QUOX_COLOR` env override). |
+| `test/glyph.test.mjs` | node:test suite (8 tests). Run via `npm test` in the package (`node --test test/`). |
+
+### Exports
+
+```js
+// Constants (the spec's values — ports test against these, never re-type)
+GRAD      // brand gradient #38bdf8 → #a855f7
+RAINBOW   // 8-stop rainbow, RESERVED for `completed` lifecycle event
+STATUS    // ok ✔ / fail ✖ / busy ◐ / warn ⚠ / block ⛔ (glyph + rgb)
+ICONS     // 11 surface icons: repobrain, clarify, qlarity, quoxplan, doneengine,
+          //   quoxbuild, quoxsignal, bastion, precompact, brain2, quox (Ⓠ fallback)
+BUDGETS   // VERB_MAX 48, RESULT_MAX 40, LINE_MAX 120, TREE_MAX 6, TABLE_MAX 6
+PUA_Q     // PUA horned-Q glyph (QuoxSymbols font; used when QUOX_BRAND_FONT=1)
+
+// Renderers
+setColor(v)                    // force colour on/off (null = auto)
+line(surface, verb, opts)      // grammar line: <icon> NAME │ <verb> │ <result> · <ms> [status]
+meter(done, total?, width=8)   // gradient progress meter ▰▰▰▱
+celebrate(text)                // rainbow text (completed events only)
+receipt(hash, ts)              // WARD receipt footer ⛓ ward:<hash12>
+
+// Lifecycle events (spec section 4b) — each returns a rendered line
+events.{created, updated, progressed, completed, assigned, released, failed, warned}
+```
+
+Colour resolution order: `setColor()` override → `QUOX_COLOR` env (`0` off, `1`/`2` on) → `isTTY && !NO_COLOR`.
+
+---
+
 ## Package: eslint-plugin-quox-plugin
 
 **Purpose:** ESLint rules to catch common plugin mistakes at build time.
@@ -247,7 +285,7 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 | `backend-plugins.md` | Docker backend service integration |
 | `signing.md` | Ed25519 signatures and verification |
 | `claude-skill.md` | AI-assisted plugin development |
-| `suggested-rules.md` | Pattern: ship suggested rules with plugins/skills |
+| `suggested-rules.md` | Pattern: ship suggested rules with plugins/skills (incl. QuoxGlyph terminal grammar) |
 | `plan-sdk-dx.md` | Internal DX improvement plan |
 
 ### Tutorials (docs/tutorials/)
@@ -269,7 +307,7 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 
 | File | Description |
 |------|-------------|
-| `SKILL.md` | Full skill definition (182 lines). 5 modes: scaffold, manifest, debug, extend, review. Points to canonical `quoxpert-plugin-sdk` skill. |
+| `SKILL.md` | Full skill definition. 5 modes: scaffold, manifest, debug, extend, review. Points to canonical `quoxpert-plugin-sdk` skill. |
 
 **Modes:**
 - `scaffold` — Template selection guidance
@@ -288,7 +326,8 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 | Scaffold from MCP | `npx create-quox-plugin my-plugin --from-mcp "command"` |
 | Dev server | `npm run dev` (in plugin project, port 5174) |
 | Build plugin | `npm run build` → `{id}.quoxplugin` |
-| Run SDK tests | `npm test` (root) |
+| Run SDK tests | `npm test` (root, vitest) |
+| Run glyph tests | `npm test` inside `packages/quox-glyph` (node --test) |
 | Sign plugin | `node scripts/sign-plugin.js --plugin X --key Y` |
 | Generate keys | `node scripts/generate-signing-key.js` |
 
@@ -304,6 +343,8 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 | `vitest` (dev) | Test runner |
 | `jsdom` (dev) | DOM environment for tests |
 
+`@quox/glyph` has zero runtime dependencies (node:test only, built in).
+
 ---
 
 ## Related Repos
@@ -314,6 +355,7 @@ Also flags `api.storage.set` with a deprecation warning (use `api.cache` or `api
 | `@quox/glass` | Component library exposed as `window.__quoxGlass`. |
 | `quoxflow` | Workflow engine for agent autonomy. |
 | `quoxmcp` | MCP server for Claude Code integration. |
+| `quox-skills` | Home of the QuoxGlyph spec that `@quox/glyph` implements. |
 
 ---
 
@@ -329,7 +371,10 @@ npm test
 # - packages/quox-plugin-vite: config generation, import rewriting, dev host (4 files)
 # - packages/create-quox-plugin: scaffolder output, MCP migration (2 files)
 # - scripts: signing flow (1 file)
+# - packages/quox-glyph: renderer + lifecycle events (1 file, node:test — run inside the package)
 ```
+
+**Known issue (2026-09-06):** root `npm test` (vitest) also collects `packages/quox-glyph/test/glyph.test.mjs`, which is a node:test file, and fails the run with "No test suite found" (150/150 actual tests pass; 1 suite reported failed). Fix is a vitest exclude for `packages/quox-glyph/**` or converting the glyph tests to vitest.
 
 ---
 
@@ -362,9 +407,9 @@ The dev host uses a virtual module (`virtual:quox-dev-host`) to resolve React/Re
 
 | Check | Status | Details |
 |-------|--------|---------|
-| Package count matches workspaces | ✓ pass | 4 packages in packages/, workspaces glob `packages/*` |
+| Package count matches workspaces | ✓ pass | 5 packages in packages/, workspaces glob `packages/*` |
 | All templates have MainView | ✓ pass | 8/8 templates have src/views/MainView.jsx |
 | Signing/licensing scripts exist | ✓ pass | 3 scripts in scripts/, all referenced by docs/signing.md |
-| Test coverage | ✓ pass | 10 test files across packages + scripts |
 | Templates per docs | ✓ pass | 8 templates, 8 matching tutorials in docs/tutorials/ |
+| Root test suite green | ✗ fail | vitest collects glyph node:test file and reports 1 failed suite (see Testing section); all 150 real tests pass, glyph's 8 pass under `node --test` |
 | Permissions documented | ⚠ warn | 7/9 PluginPermission values covered in docs/plugin-api.md; `sidebar` and `tools` have no explicit "Requires" section (`storage` covered as deprecated alias of `cache`) |
