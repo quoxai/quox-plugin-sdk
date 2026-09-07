@@ -1,6 +1,6 @@
 # CODEBASE_MAP.md — quox-plugin-sdk
 
-<!-- Last verified: 2026-09-06 by /codebase-mirror -->
+<!-- Last verified: 2026-09-07 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
 
