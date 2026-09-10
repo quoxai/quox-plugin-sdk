@@ -1,6 +1,6 @@
 # CODEBASE_MAP.md — quox-plugin-sdk
 
-<!-- Last verified: 2026-09-07 by /codebase-mirror -->
+<!-- Last verified: 2026-09-10 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo.
 
@@ -374,7 +374,7 @@ npm test
 # - packages/quox-glyph: renderer + lifecycle events (1 file, node:test — run inside the package)
 ```
 
-**Known issue (2026-09-06):** root `npm test` (vitest) also collects `packages/quox-glyph/test/glyph.test.mjs`, which is a node:test file, and fails the run with "No test suite found" (150/150 actual tests pass; 1 suite reported failed). Fix is a vitest exclude for `packages/quox-glyph/**` or converting the glyph tests to vitest.
+**Known issue (2026-09-06, reconfirmed 2026-09-10):** root `npm test` (vitest) also collects `packages/quox-glyph/test/glyph.test.mjs`, which is a node:test file, and fails the run with "No test suite found" (150/150 actual tests pass; 1 suite reported failed). Fix is a vitest exclude for `packages/quox-glyph/**` or converting the glyph tests to vitest.
 
 ---
 
