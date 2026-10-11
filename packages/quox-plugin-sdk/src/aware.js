@@ -21,9 +21,10 @@ export function validateEvent(ev) {
     if (ev.causes !== undefined && !Array.isArray(ev.causes)) return 'causes must be an array';
     if (ev.salience !== undefined) {
         if (!isObj(ev.salience)) return 'salience must be an object';
-        for (const k of ['needs', 'gates']) {
-            if (ev.salience[k] !== undefined && typeof ev.salience[k] !== 'boolean') return `salience.${k} must be boolean`;
-        }
+        // Matches the collector: needs is who must act, gates is what the item holds up.
+        const NEEDS = ['owner', 'any-human', 'agent', 'none'];
+        if (ev.salience.needs !== undefined && !NEEDS.includes(ev.salience.needs)) return `salience.needs must be one of ${NEEDS.join('|')}`;
+        if (ev.salience.gates !== undefined && !(Array.isArray(ev.salience.gates) && ev.salience.gates.every((g) => typeof g === 'string'))) return 'salience.gates must be an array of strings';
     }
     if (ev.state !== undefined) {
         if (!isObj(ev.state)) return 'state must be an object';

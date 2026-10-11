@@ -7,7 +7,7 @@ export interface AwareEvent {
     summary?: string;
     ttl_s?: number;
     causes?: unknown[];
-    salience?: { needs?: boolean; gates?: boolean };
+    salience?: { needs?: 'owner' | 'any-human' | 'agent' | 'none'; gates?: string[]; hint?: number; deadline?: number };
     state?: {
         layers?: { L0?: string; L1?: unknown; L2?: unknown };
         affects?: unknown[];

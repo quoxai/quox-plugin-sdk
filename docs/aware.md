@@ -17,7 +17,7 @@ const aware = createAware({
 const hb = startHeartbeat(aware, 30_000, () => (db.ok() ? {} : { error: 'db down' }));
 await aware.emit({
   ledger: 'intentional', kind: 'ask', subject: 'myplug:export:42',
-  summary: 'Export 42 needs a decision', salience: { needs: true },
+  summary: 'Export 42 needs a decision', salience: { needs: 'owner', gates: ['export:42'] },
 });
 await aware.snapshot('myplug:job:', jobs.map((j) => ({
   ledger: 'operational', kind: 'state', subject: `myplug:job:${j.id}`, summary: j.title,

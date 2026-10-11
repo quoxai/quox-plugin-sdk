@@ -105,3 +105,13 @@ describe('aware', () => {
         expect(aware.heartbeat.mock.calls.length).toBe(n);
     });
 });
+
+describe('salience shape matches the collector', () => {
+  it('needs is a role string and gates a string array', async () => {
+    const { validateEvent } = await import('../aware.js');
+    const base = { ledger: 'social', kind: 'ask', subject: 'x:1' };
+    expect(validateEvent({ ...base, salience: { needs: 'owner', gates: ['deploy:a'] } })).toBeNull();
+    expect(validateEvent({ ...base, salience: { needs: true } })).toMatch(/needs must be one of/);
+    expect(validateEvent({ ...base, salience: { gates: 'x' } })).toMatch(/gates must be an array/);
+  });
+});
