@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { line, meter, celebrate, receipt, events, setColor, BUDGETS } from '../index.js';
+import { line, meter, celebrate, receipt, events, setColor, BUDGETS, brandName } from '../index.js';
 
 // Plain-mode contract: the exact bytes a captured (non-tty) consumer receives.
 setColor(false);
@@ -53,4 +53,17 @@ test('QUOX_COLOR=2 forces colour even when not a tty', () => {
     delete process.env.QUOX_COLOR;
     setColor(false);
   }
+});
+
+test('line() paints the surface name with the brand gradient when colour is on', () => {
+  setColor(true);
+  try {
+    const out = line('quox', 'x');
+    // first and last letters differ in colour (gradient), name stays bold
+    assert.match(out, /\x1b\[1m/);
+    const colours = out.match(/\x1b\[38;2;\d+;\d+;\d+m/g) || [];
+    assert.ok(new Set(colours).size >= 3, 'multiple gradient stops expected');
+    assert.equal(brandName('Ⓠ QUOX', false), 'Ⓠ QUOX');
+  } finally { setColor(false); }
+  assert.equal(line('quox', 'x'), 'Ⓠ QUOX │ x');
 });

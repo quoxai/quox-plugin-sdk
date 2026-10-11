@@ -26,6 +26,10 @@ export const ICONS = {
   quoxplan: '🧭 QUOXPLAN', doneengine: '🏁 DONEENGINE', quoxbuild: '🔨 QUOXBUILD',
   quoxsignal: '📡 QUOXSIGNAL', bastion: '🛰️ BASTION', precompact: '🧿 PRECOMPACT',
   brain2: '🌌 BRAIN2',
+  watchtower: '📨 WATCHTOWER', metron: '⏳ METRON',
+  quoxseo: '📈 QUOXSEO', reach: '💥 REACH', vulcan: '🌋 VULCAN',
+  quoxvoice: '📞 QUOXVOICE', quoxsecurity: '🛡️ QUOXSECURITY', quoxpert: '🎓 QUOXPERT',
+  quoxslots: '📍 QUOXSLOTS',
   quox: 'Ⓠ QUOX'
 };
 export const BUDGETS = { VERB_MAX: 48, RESULT_MAX: 40, LINE_MAX: 120, TREE_MAX: 6, TABLE_MAX: 6 };
@@ -51,12 +55,24 @@ function iconFor(surface) {
   return name;
 }
 
+/** "<icon> NAME" with NAME painted in the brand gradient, bold, so a Quox
+ *  line stands out in tool output (owner 2026-10-05). Plain when colour is off. */
+export function brandName(label, col = on()) {
+  if (!col) return label;
+  const i = label.indexOf(' ');
+  const icon = i > 0 ? label.slice(0, i) : '';
+  const chars = [...(i > 0 ? label.slice(i + 1) : label)];
+  const last = Math.max(chars.length - 1, 1);
+  const painted = chars.map((c, k) => fg(GRAD[0].map((v, j) => Math.round(v + (GRAD[1][j] - v) * k / last))) + c).join('');
+  return `${icon ? icon + ' ' : ''}${BOLD}${painted}${R}`;
+}
+
 const trunc = (s, max) => ([...s].length > max ? [...s].slice(0, max - 1).join('') + '…' : s);
 
 /** The grammar event line. opts: {result, ms, status} */
 export function line(surface, verb, opts = {}) {
   const col = on();
-  const name = col ? `${BOLD}${iconFor(surface)}${R}` : iconFor(surface);
+  const name = brandName(iconFor(surface), col);
   const sep = col ? `${DIM}│${R}` : '│';
   let tail = opts.result ? trunc(opts.result, BUDGETS.RESULT_MAX) : '';
   if (opts.ms !== undefined) {
