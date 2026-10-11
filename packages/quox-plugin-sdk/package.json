@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.js",
     "./testing": "./src/testing.js",
+    "./aware": { "types": "./src/aware.d.ts", "default": "./src/aware.js" },
     "./types": "./src/types.d.ts"
   },
   "files": ["src"],
