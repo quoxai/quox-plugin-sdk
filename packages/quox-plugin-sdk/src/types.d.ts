@@ -339,10 +339,10 @@ export interface QuoxPluginApi {
     /** Navigate the host shell. */
     navigate(path: string): Promise<void>;
     notify(message: string, type?: 'info' | 'success' | 'warning' | 'error'): Promise<void>;
-    getUser(): Promise<{ userId: string; orgId: string; role: string; tier: string }>;
+    getUser(): Promise<{ userId: string | null; orgId: string | null; role: string; tier: string }>;
 
     /** Set a handler for host events (for example `route`). Synchronous. */
-    onEvent(fn: (method: string, args: any[]) => void): void;
+    onEvent(fn: (method: string, args: Record<string, any>) => void): void;
 }
 
 /** @deprecated Renamed to QuoxPluginApi. The old PluginAPI surface does not exist in the sandbox. */
