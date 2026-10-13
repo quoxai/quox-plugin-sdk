@@ -2,119 +2,151 @@
 /**
  * sync-glass-css.mjs
  *
- * Vendors a snapshot of quox-dashboard's src/styles/qx-components.css into
- * this package (assets/qx-components.css) so the SDK-DX dev host can serve
- * real glass-design-system classes (.qx-pill, .qx-tabs, .qx-skeleton, ...)
- * without the consuming plugin project needing quox-dashboard as a sibling
- * checkout at runtime.
+ * Vendors a snapshot of the QuoxCORE dashboard's qx component stylesheet
+ * (src/styles/qx-components.css) plus the top-level design-token :root blocks
+ * from src/index.css into assets/qx-components.css. Community plugins run in a
+ * sandboxed frame with NO host stylesheets, so the build and the dev preview
+ * inject this file; the variables (--m-*, --qx-*) must be defined here or every
+ * var() resolves to nothing.
  *
  * Usage:
- *   node scripts/sync-glass-css.mjs [sourcePath]
+ *   node scripts/sync-glass-css.mjs <dashboardDir> [--commit <sha>]
+ *   QUOX_DASHBOARD_DIR=<dashboardDir> node scripts/sync-glass-css.mjs
  *
- * sourcePath defaults to ../../../quox-dashboard/src/styles/qx-components.css
- * relative to this package's root (i.e. assumes quox-dashboard is cloned as
- * a sibling of quox-plugin-sdk under the same parent directory). Pass an
- * absolute or CWD-relative path to override.
- *
- * Re-run this whenever quox-dashboard's qx-components.css changes and the
- * dev host should pick up new/changed classes.
+ * <dashboardDir> is a checkout (or export) of the dashboard repo root. There is
+ * no default location. The header records the source commit (from --commit, or
+ * `git rev-parse HEAD` inside <dashboardDir>) and the sha256 of the sources and
+ * of the vendored body, so drift is detectable (see the header test).
  */
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
-
-const DEFAULT_SOURCE = path.resolve(packageRoot, '../../../quox-dashboard/src/styles/qx-components.css');
-// The qx-* classes are written against CSS custom properties (--m-*, --qx-*)
-// that quox-dashboard defines in src/index.css :root blocks — without them
-// every var() falls back to nothing and glass renders grey. Vendor them too.
-const DEFAULT_TOKENS_SOURCE = path.resolve(packageRoot, '../../../quox-dashboard/src/index.css');
 const OUTPUT_PATH = path.join(packageRoot, 'assets', 'qx-components.css');
 
-function resolveSourcePath(argv) {
-    const override = argv[2];
-    if (!override) return DEFAULT_SOURCE;
-    return path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
+export const HEADER_END = ' * ==== END VENDORED HEADER ====\n */\n';
+
+export function sha256(text) {
+    return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
 /**
- * Extracts every top-level `:root { ... }` block (balanced braces) from a
- * stylesheet — the design-token custom-property definitions the qx classes
- * depend on. Media-query-nested :root blocks are captured too (wrapped in
- * their original @media rule would be ideal, but tokens in this codebase are
- * theme-stable, so top-level extraction of the first block is sufficient and
- * deliberately conservative).
+ * Extracts every DEPTH-0 `:root { ... }` block (balanced braces). Blocks
+ * nested in @media rules are deliberately skipped: they are responsive
+ * overrides of the dashboard chrome and would shrink a plugin's spacing.
  * @param {string} css
  * @returns {string}
  */
 export function extractRootTokenBlocks(css) {
     const blocks = [];
-    const re = /(^|\n)\s*:root\s*\{/g;
-    let match;
-    while ((match = re.exec(css)) !== null) {
-        const start = css.indexOf('{', match.index);
-        let depth = 0;
-        let end = start;
-        for (let i = start; i < css.length; i++) {
-            if (css[i] === '{') depth++;
-            else if (css[i] === '}') {
-                depth--;
-                if (depth === 0) { end = i; break; }
-            }
+    let depth = 0;
+    let i = 0;
+    while (i < css.length) {
+        const ch = css[i];
+        if (ch === '/' && css[i + 1] === '*') {
+            const end = css.indexOf('*/', i + 2);
+            i = end === -1 ? css.length : end + 2;
+            continue;
         }
-        blocks.push(css.slice(match.index, end + 1).trim());
+        if (depth === 0 && css.startsWith(':root', i) && /^:root\s*\{/.test(css.slice(i, i + 40))) {
+            const start = css.indexOf('{', i);
+            let d = 0;
+            let end = start;
+            for (let j = start; j < css.length; j++) {
+                if (css[j] === '{') d++;
+                else if (css[j] === '}') {
+                    d--;
+                    if (d === 0) { end = j; break; }
+                }
+            }
+            blocks.push(css.slice(i, end + 1).trim());
+            i = end + 1;
+            continue;
+        }
+        if (ch === '{') depth++;
+        else if (ch === '}') depth--;
+        i++;
     }
     return blocks.join('\n\n');
 }
 
-function buildProvenanceHeader(sourcePath) {
-    const syncedAt = new Date().toISOString();
-    return [
+/**
+ * Builds the full vendored file: provenance header + body.
+ * @param {{components: string, indexCss: string, commit: string}} src
+ */
+export function buildVendoredCss({ components, indexCss, commit }) {
+    const tokens = extractRootTokenBlocks(indexCss);
+    const body =
+        '/* Design tokens: top-level :root blocks of src/index.css */\n' +
+        `${tokens}\n\n` +
+        '/* Components: src/styles/qx-components.css */\n' +
+        components;
+    const header = [
         '/**',
-        ' * VENDORED FILE — do not edit directly.',
-        ' *',
-        ` * Source: ${sourcePath}`,
-        ` * Synced: ${syncedAt}`,
-        ' *',
-        ' * Regenerate with: node scripts/sync-glass-css.mjs [sourcePath]',
-        ' * (packages/quox-plugin-vite in quoxai/quox-plugin-sdk)',
-        ' */',
-        '',
+        ' * VENDORED FILE, do not edit directly.',
+        ' * Regenerate: node scripts/sync-glass-css.mjs <dashboardDir> [--commit <sha>]',
+        ` * Source-Commit: ${commit}`,
+        ` * Source-Components-SHA256: ${sha256(components)}`,
+        ` * Source-Index-SHA256: ${sha256(indexCss)}`,
+        ` * Body-SHA256: ${sha256(body)}`,
+        HEADER_END,
     ].join('\n');
+    return header + body;
 }
 
-export function syncGlassCss(argv = process.argv) {
-    const sourcePath = resolveSourcePath(argv);
+/** Splits a vendored file into { header, body } and reads Body-SHA256. */
+export function parseVendoredCss(text) {
+    const idx = text.indexOf(HEADER_END);
+    if (idx === -1) return null;
+    const header = text.slice(0, idx + HEADER_END.length);
+    const body = text.slice(idx + HEADER_END.length);
+    const m = header.match(/Body-SHA256: ([0-9a-f]{64})/);
+    return { header, body, declared: m ? m[1] : null };
+}
 
-    if (!fs.existsSync(sourcePath)) {
-        throw new Error(`[sync-glass-css] source not found: ${sourcePath}`);
+function resolveCommit(dir, explicit) {
+    if (explicit) return explicit;
+    try {
+        return execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    } catch {
+        return 'unknown';
     }
+}
 
-    const original = fs.readFileSync(sourcePath, 'utf8');
-
-    let tokens = '';
-    if (fs.existsSync(DEFAULT_TOKENS_SOURCE)) {
-        tokens = extractRootTokenBlocks(fs.readFileSync(DEFAULT_TOKENS_SOURCE, 'utf8'));
-        if (tokens) {
-            tokens = `/* Design tokens vendored from ${DEFAULT_TOKENS_SOURCE} */\n${tokens}\n\n`;
-        }
-    } else {
-        console.warn(`[sync-glass-css] tokens source not found (${DEFAULT_TOKENS_SOURCE}) — vendoring components only`);
+export function syncGlassCss(argv = process.argv.slice(2), env = process.env, outPath = OUTPUT_PATH) {
+    let commit;
+    const positional = [];
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === '--commit') commit = argv[++i];
+        else positional.push(argv[i]);
     }
-
-    const output = buildProvenanceHeader(sourcePath) + tokens + original;
-
-    fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-    fs.writeFileSync(OUTPUT_PATH, output, 'utf8');
-
-    console.log(`[sync-glass-css] ${sourcePath} -> ${OUTPUT_PATH} (${output.length} bytes)`);
-    return OUTPUT_PATH;
+    const dirArg = positional[0] || env.QUOX_DASHBOARD_DIR;
+    if (!dirArg) {
+        throw new Error('[sync-glass-css] pass the dashboard repo dir as an argument or set QUOX_DASHBOARD_DIR');
+    }
+    const dir = path.resolve(process.cwd(), dirArg);
+    const compPath = path.join(dir, 'src', 'styles', 'qx-components.css');
+    const indexPath = path.join(dir, 'src', 'index.css');
+    for (const p of [compPath, indexPath]) {
+        if (!fs.existsSync(p)) throw new Error(`[sync-glass-css] source not found: ${p}`);
+    }
+    const output = buildVendoredCss({
+        components: fs.readFileSync(compPath, 'utf8'),
+        indexCss: fs.readFileSync(indexPath, 'utf8'),
+        commit: resolveCommit(dir, commit),
+    });
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, output, 'utf8');
+    console.log(`[sync-glass-css] ${dir} -> ${outPath} (${output.length} bytes)`);
+    return outPath;
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isMain) {
-    syncGlassCss();
+    try { syncGlassCss(); } catch (e) { console.error(e.message); process.exit(1); }
 }
