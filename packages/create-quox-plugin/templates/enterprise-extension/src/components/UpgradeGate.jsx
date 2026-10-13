@@ -1,5 +1,7 @@
 /**
- * UpgradeGate — Locked feature overlay with upgrade CTA.
+ * UpgradeGate: dims a locked feature and says which tier unlocks it.
+ * Display only. The real gate is your backend checking the caller's tier
+ * (getQuox().getUser() reports it); never rely on the UI to protect a feature.
  */
 
 const { React } = window.__quoxSharedDeps;
@@ -7,50 +9,11 @@ const { React } = window.__quoxSharedDeps;
 export default function UpgradeGate({ children, requiredTier = 'pro' }) {
     return (
         <div style={{ position: 'relative' }}>
-            <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                {children}
-            </div>
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(0,0,0,0.3)',
-                borderRadius: '8px',
-            }}>
-                <span style={{
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: '4px',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    background: requiredTier === 'enterprise'
-                        ? 'rgba(234,179,8,0.2)'
-                        : 'rgba(168,85,247,0.2)',
-                    color: requiredTier === 'enterprise' ? '#eab308' : '#a855f7',
-                    textTransform: 'uppercase',
-                    marginBottom: '0.5rem',
-                }}>
-                    {requiredTier} required
+            <div style={{ opacity: 0.45, pointerEvents: 'none' }}>{children}</div>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className={'qx-pill ' + (requiredTier === 'enterprise' ? 'qx-pill--warn' : 'qx-pill--purple')}>
+                    {requiredTier} tier required
                 </span>
-                <button
-                    onClick={() => {
-                        // Open upgrade flow
-                        console.log('Upgrade to', requiredTier);
-                    }}
-                    style={{
-                        padding: '0.3rem 0.8rem',
-                        background: 'rgba(168,85,247,0.15)',
-                        color: 'rgba(168,85,247,0.9)',
-                        border: '1px solid rgba(168,85,247,0.3)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                    }}
-                >
-                    Upgrade
-                </button>
             </div>
         </div>
     );

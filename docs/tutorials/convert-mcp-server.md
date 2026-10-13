@@ -6,7 +6,7 @@ This tutorial will cover converting an existing MCP (Model Context Protocol) ser
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - An MCP server you can run locally as a stdio process, or a saved `tools/list` result if you don't want to run it live
 - Familiarity with the [Specialist Agent tutorial](specialist-agent.md), migration mode reuses that template
 
@@ -54,7 +54,12 @@ The generated plugin shows the imported tool list and routes chat to the special
 cd my-mcp-agent
 npm install
 npm run build
+npm run validate
+npx quox-plugin keygen --out .keys   # one time
+npm run sign
 ```
+
+The generated plugin follows the community sandbox model: the tool list is display data, and execution goes through your backend.
 
 <!-- TODO(showcase task): worked example with a real published MCP server, full tool
      table, and dev-host screenshots. -->

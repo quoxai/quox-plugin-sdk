@@ -1,88 +1,27 @@
 /**
- * ${displayName} — Settings Panel
- * OAuth credential and organization configuration.
+ * ${displayName}: Settings Panel
+ *
+ * The organisation name is kept in plugin storage. The OAuth token is a secret:
+ * it is sent to your plugin backend (POST /config) and never stored in the
+ * browser-visible plugin storage.
  */
 
-const { React } = window.__quoxSharedDeps;
+import useConfig from '../lib/useConfig';
+import ConfigForm from '../lib/ConfigForm';
+import { ErrorBanner, Page } from '../lib/ui';
 
-export default function SettingsPanel({ pluginApi }) {
-    const [config, setConfig] = React.useState(() => {
-        return pluginApi?.config?.get() || { oauthToken: '', orgName: '' };
-    });
+const FIELDS = [
+    { key: 'orgName', label: 'Organization', type: 'text', hint: 'Organization or workspace name in the third-party service.' },
+    { key: 'oauthToken', label: 'OAuth token', type: 'password', hint: 'Sent to your plugin backend only. Leave empty to keep the saved token.' },
+];
 
-    const handleSave = () => {
-        if (pluginApi?.config) {
-            pluginApi.config.save(config);
-        }
-        if (pluginApi?.notify) {
-            pluginApi.notify('Settings saved', 'success');
-        }
-    };
+export default function SettingsPanel() {
+    const cfg = useConfig('config', { orgName: '', oauthToken: '' }, { secretKeys: ['oauthToken'], remotePath: '/config' });
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '600px' }}>
-            <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1.5rem' }}>
-                ${displayName} Settings
-            </h2>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-                    OAuth Token
-                </label>
-                <input
-                    type="password"
-                    value={config.oauthToken}
-                    onChange={e => setConfig(prev => ({ ...prev, oauthToken: e.target.value }))}
-                    placeholder="Enter OAuth access token"
-                    style={{
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '6px',
-                        color: 'rgba(255,255,255,0.85)',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                    }}
-                />
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-                    Organization
-                </label>
-                <input
-                    type="text"
-                    value={config.orgName}
-                    onChange={e => setConfig(prev => ({ ...prev, orgName: e.target.value }))}
-                    placeholder="e.g. my-org"
-                    style={{
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '6px',
-                        color: 'rgba(255,255,255,0.85)',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                    }}
-                />
-            </div>
-
-            <button
-                onClick={handleSave}
-                style={{
-                    padding: '0.5rem 1.25rem',
-                    background: 'rgba(16,185,129,0.15)',
-                    color: 'rgba(16,185,129,0.9)',
-                    border: '1px solid rgba(16,185,129,0.3)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                }}
-            >
-                Save Settings
-            </button>
-        </div>
+        <Page title="${displayName} settings" maxWidth={640}>
+            <ErrorBanner error={cfg.error} title="Settings problem" />
+            <ConfigForm fields={FIELDS} config={cfg.config} onChange={cfg.setConfig} onSave={cfg.save} saving={cfg.saving} disabled={cfg.loading} />
+        </Page>
     );
 }

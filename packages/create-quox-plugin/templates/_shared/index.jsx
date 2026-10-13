@@ -1,23 +1,19 @@
 /**
- * ${displayName} — QuoxCORE Plugin Entry Point
+ * ${displayName}: QuoxCORE community plugin entry point.
+ *
+ * Community plugins run inside a sandboxed frame. registerPlugin hands your
+ * route components to the host; everything else (storage, backend calls,
+ * memory, notifications) goes through getQuox() from quox-plugin-sdk.
  */
 
-const { React } = window.__quoxSharedDeps;
+import { registerPlugin } from 'quox-plugin-sdk';
 import MainView from './views/MainView';${settingsImport}
 
-window.__quoxPluginRegister('${pluginName}', {
+registerPlugin('${pluginName}', {
     routes: {
         '/plugins/${pluginName}': MainView,${settingsRoute}
     },
     sidebar: [
         { path: '/plugins/${pluginName}', label: '${displayName}', icon: 'puzzle' },
     ],
-    hooks: {
-        onActivate() {
-            console.log('[${displayName}] Activated');
-        },
-        onDeactivate() {
-            console.log('[${displayName}] Deactivated');
-        },
-    },
 });

@@ -1,144 +1,118 @@
 /**
- * ${displayName} — Main View
- * Displays host table with action buttons and safety gates.
+ * ${displayName}: Main View
+ *
+ * Host table with confirm-before-act safety gates.
+ *
+ * What a sandboxed plugin can and cannot do: it cannot reach hosts, a bastion
+ * or the fleet directly. This view asks YOUR plugin backend (getQuox().fetch)
+ * to list hosts and to run actions, and records an audit envelope for every
+ * action with getQuox().aee.emit. Governed host access (the Quox fleet, vault
+ * credentials, bastion exec) belongs to an official plugin or to your backend
+ * calling a service you operate; it is not available inside the sandbox.
+ *
+ * Backend contract: GET /hosts -> { hosts: [...] }, POST /hosts/<id>/<action>.
+ * Until a backend answers, the view shows an error and labelled sample data; actions on
+ * sample data are simulated locally and say so.
  */
 
-const { React } = window.__quoxSharedDeps;
-const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
-import { MOCK_HOSTS } from '../data/mock';
+import { getQuox } from 'quox-plugin-sdk';
+import { api, toast } from '../lib/api';
+import useLoad from '../lib/useLoad';
+import { ErrorBanner, InfoBanner, Page, Spinner } from '../lib/ui';
 import ConfirmModal from '../components/ConfirmModal';
+import { MOCK_HOSTS } from '../data/mock';
 
-const STATUS_COLORS = {
-    online: '#10b981',
-    offline: '#ef4444',
-    maintenance: '#f59e0b',
+const { React } = window.__quoxSharedDeps;
+
+const STATUS_PILL = {
+    online: 'qx-pill qx-pill--online',
+    offline: 'qx-pill qx-pill--offline',
+    maintenance: 'qx-pill qx-pill--degraded',
 };
 
-// pluginApi is passed as a prop by the plugin sandbox.
-// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
-export default function MainView({ pluginApi }) {
-    const [hosts, setHosts] = React.useState(MOCK_HOSTS);
-    const [confirmAction, setConfirmAction] = React.useState(null);
+export default function MainView() {
+    const hosts = useLoad(() => api('/hosts'));
+    const [sample, setSample] = React.useState(MOCK_HOSTS);
+    const [confirm, setConfirm] = React.useState(null);
+    const [busy, setBusy] = React.useState(false);
+    const [actionError, setActionError] = React.useState(null);
 
-    const handleAction = (action, host) => {
-        setConfirmAction({ action, host });
-    };
+    const usingSample = Boolean(hosts.error);
+    const rows = usingSample ? sample : ((hosts.data && hosts.data.hosts) || []);
 
-    const executeAction = async () => {
-        if (!confirmAction) return;
-        const { action, host } = confirmAction;
-
-        // Emit AEE audit envelope
-        if (pluginApi?.aee) {
-            await pluginApi.aee.emit('${pluginName}.host.' + action, {
-                hostId: host.id,
-                hostname: host.hostname,
-                action,
-            });
-        }
-
-        // Replace with real API call
-        if (action === 'restart') {
-            setHosts(prev => prev.map(h =>
-                h.id === host.id ? { ...h, status: 'maintenance' } : h
-            ));
-            if (pluginApi?.notify) {
-                pluginApi.notify('Restarting ' + host.hostname + '...', 'info');
+    const execute = async () => {
+        const { action, host } = confirm;
+        setBusy(true);
+        setActionError(null);
+        try {
+            // Audit first: if the host refuses the envelope we do not act.
+            await getQuox().aee.emit('${pluginName}.host.' + action, { hostId: host.id, hostname: host.hostname, action });
+            if (usingSample) {
+                setSample(prev => action === 'remove'
+                    ? prev.filter(h => h.id !== host.id)
+                    : prev.map(h => (h.id === host.id ? { ...h, status: 'maintenance' } : h)));
+                toast('Simulated ' + action + ' on ' + host.hostname + ' (sample data, nothing was sent)', 'info');
+            } else {
+                await api('/hosts/' + encodeURIComponent(host.id) + '/' + action, { method: 'POST' });
+                toast(action + ' requested for ' + host.hostname, 'success');
+                hosts.reload();
             }
-        } else if (action === 'remove') {
-            setHosts(prev => prev.filter(h => h.id !== host.id));
-            if (pluginApi?.notify) {
-                pluginApi.notify('Removed ' + host.hostname, 'warning');
-            }
+            setConfirm(null);
+        } catch (e) {
+            setActionError(e);
+            toast('Action failed: ' + e.message, 'error');
+        } finally {
+            setBusy(false);
         }
-        setConfirmAction(null);
     };
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1100px' }}>
-            <h2 style={{ color: COLORS.white, marginBottom: 24, fontFamily: F }}>
-                ${displayName}
-            </h2>
+        <Page
+            title="${displayName}"
+            maxWidth={1100}
+            actions={<button className="qx-btn qx-btn--sm" onClick={hosts.reload}>Refresh</button>}
+        >
+            <ErrorBanner error={hosts.error} onRetry={hosts.reload} title="Host backend unavailable" />
+            {usingSample && <InfoBanner>Showing sample data. Actions are simulated until your plugin backend serves /hosts.</InfoBanner>}
+            <ErrorBanner error={actionError} title="Action failed" />
 
-            <GlassPanel>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        {['Hostname', 'IP', 'Group', 'OS', 'Status', 'Last Seen', 'Actions'].map(h => (
-                            <th key={h} style={{
-                                padding: '0.75rem',
-                                textAlign: 'left',
-                                color: COLORS.subtleText,
-                                fontWeight: 500,
-                                fontSize: '0.85rem',
-                            }}>{h}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {hosts.map(host => (
-                        <tr key={host.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: COLORS.white, fontWeight: 500 }}>
-                                {host.hostname}
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.dimText, fontFamily: 'monospace' }}>
-                                {host.ip}
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>{host.group}</td>
-                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>{host.os}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                                <GlassPill color={STATUS_COLORS[host.status] || '#6b7280'}>
-                                    {host.status}
-                                </GlassPill>
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.subtleText, fontSize: '0.85rem' }}>
-                                {new Date(host.lastSeen).toLocaleString()}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>
-                                <button
-                                    onClick={() => handleAction('restart', host)}
-                                    style={{
-                                        padding: '0.3rem 0.6rem',
-                                        marginRight: '0.5rem',
-                                        background: 'rgba(59,130,246,0.15)',
-                                        color: 'rgba(59,130,246,0.9)',
-                                        border: '1px solid rgba(59,130,246,0.3)',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.8rem',
-                                    }}
-                                >
-                                    ↻ Restart
-                                </button>
-                                <button
-                                    onClick={() => handleAction('remove', host)}
-                                    style={{
-                                        padding: '0.3rem 0.6rem',
-                                        background: 'rgba(239,68,68,0.15)',
-                                        color: 'rgba(239,68,68,0.9)',
-                                        border: '1px solid rgba(239,68,68,0.3)',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.8rem',
-                                    }}
-                                >
-                                    ✕ Remove
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            </GlassPanel>
+            {hosts.loading && !hosts.data && !hosts.error ? <Spinner /> : (
+                <div className="qx-card" style={{ padding: 8 }}>
+                    <table className="qx-table">
+                        <thead>
+                            <tr><th>Hostname</th><th>IP</th><th>Group</th><th>OS</th><th>Status</th><th>Last seen</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {rows.map(h => (
+                                <tr key={h.id}>
+                                    <td>{h.hostname}</td>
+                                    <td className="qx-mono">{h.ip}</td>
+                                    <td>{h.group}</td>
+                                    <td>{h.os}</td>
+                                    <td><span className={STATUS_PILL[h.status] || 'qx-pill'}>{h.status}</span></td>
+                                    <td>{new Date(h.lastSeen).toLocaleString()}</td>
+                                    <td>
+                                        <span style={{ display: 'inline-flex', gap: 8 }}>
+                                            <button className="qx-btn qx-btn--sm" onClick={() => setConfirm({ action: 'restart', host: h })}>Restart</button>
+                                            <button className="qx-btn qx-btn--sm qx-btn--danger" onClick={() => setConfirm({ action: 'remove', host: h })}>Remove</button>
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
-            {confirmAction && (
+            {confirm && (
                 <ConfirmModal
-                    action={confirmAction.action}
-                    target={confirmAction.host.hostname}
-                    onConfirm={executeAction}
-                    onCancel={() => setConfirmAction(null)}
+                    action={confirm.action}
+                    target={confirm.host.hostname}
+                    busy={busy}
+                    onConfirm={execute}
+                    onCancel={() => setConfirm(null)}
                 />
             )}
-        </div>
+        </Page>
     );
 }
