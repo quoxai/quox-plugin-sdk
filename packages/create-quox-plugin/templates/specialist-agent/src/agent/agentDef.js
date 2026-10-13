@@ -7,6 +7,7 @@ export const agentDefinition = {
     id: '${pluginName}-agent',
     name: '${displayName} Agent',
     role: 'specialist',
+    color: '#f59e0b',
     level: 1,
     domain: 'security',
     description: 'Specialist security scanning agent for ${displayName}',

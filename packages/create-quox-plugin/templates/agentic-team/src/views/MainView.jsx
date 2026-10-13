@@ -1,12 +1,14 @@
 /**
  * ${displayName}: Main View
  *
- * Member cards, task queue, policies, shared context and a chat with the lead.
+ * Member cards, task queue, policies and shared context.
  *
  * Honest scope: the team (agents, personas, tools, policies) is declared in
  * manifest.json and run by Quox plus YOUR backend. This sandboxed plugin is the
- * UI for it: status from GET /team/status, tasks from GET /tasks, chat via
- * POST /team/chat. Until a backend answers, you see the error and labelled sample data.
+ * UI for it: status from GET /team/status, tasks from GET /tasks. Until a backend
+ * answers, you see the error and labelled sample data. The chat with the lead is NOT
+ * built here: the Quox host renders its agent sidebar beside your plugin from
+ * manifest.agentDefinition, so it matches Quox's own agents.
  * Policy enforcement (VOLT, approval, budgets) must live in the backend.
  */
 
@@ -17,13 +19,10 @@ import MemberCard from '../components/MemberCard';
 import TaskQueue from '../components/TaskQueue';
 import SharedContextPanel from '../components/SharedContextPanel';
 import PolicyBadges from '../components/PolicyBadges';
-import AgentChat from '../components/AgentChat';
 import { MOCK_TEAM_STATUS, MOCK_TASKS } from '../data/mock';
 import { teamDefinition } from '../team/teamDef';
 
 const { React } = window.__quoxSharedDeps;
-
-const SUGGESTIONS = ['Deploy latest to staging', 'Check all service health', 'View team metrics'];
 
 export default function MainView() {
     const team = useLoad(async () => {
@@ -50,21 +49,18 @@ export default function MainView() {
             {team.error && <InfoBanner>Showing sample data. Build /team/status and /tasks in your plugin backend to replace it.</InfoBanner>}
 
             {!status ? <Spinner /> : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 16, alignItems: 'start' }}>
-                    <div>
-                        <PolicyBadges policies={teamDefinition.policies} />
+                <div>
+                    <PolicyBadges policies={teamDefinition.policies} />
 
-                        <div className="qx-section-title" style={{ marginTop: 24 }}>Team members</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
-                            {status.members.map(m => <MemberCard key={m.id} member={m} />)}
-                        </div>
-
-                        <div className="qx-section-title" style={{ marginTop: 24 }}>Task queue</div>
-                        <TaskQueue tasks={tasks} />
-
-                        {showContext && <SharedContextPanel context={teamDefinition.sharedContext} onClose={() => setShowContext(false)} />}
+                    <div className="qx-section-title" style={{ marginTop: 24 }}>Team members</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+                        {status.members.map(m => <MemberCard key={m.id} member={m} />)}
                     </div>
-                    <AgentChat agentName="${displayName} lead" suggestions={SUGGESTIONS} />
+
+                    <div className="qx-section-title" style={{ marginTop: 24 }}>Task queue</div>
+                    <TaskQueue tasks={tasks} />
+
+                    {showContext && <SharedContextPanel context={teamDefinition.sharedContext} onClose={() => setShowContext(false)} />}
                 </div>
             )}
         </Page>

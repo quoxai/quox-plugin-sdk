@@ -274,7 +274,7 @@ describe('create-quox-plugin scaffolder', () => {
             expect(files).toContain('src/views/SettingsPanel.jsx');
             expect(files).toContain('src/components/AgentStatusCard.jsx');
             expect(files).toContain('src/components/ToolCard.jsx');
-            expect(files).toContain('src/components/AgentChat.jsx');
+            expect(files).not.toContain('src/components/AgentChat.jsx');
             expect(files).toContain('src/data/mock.js');
             expect(files).toContain('vite.config.js');
             expect(files).toContain('package.json');
@@ -292,6 +292,7 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.agentDefinition.autonomy).toBeDefined();
             expect(manifest.agentDefinition.autonomy.canRunAutonomously).toBe(true);
             expect(manifest.agentDefinition.suggestions).toHaveLength(5);
+            expect(manifest.agentDefinition.color).toMatch(/^#/);
         });
 
         it('has agentPersona with correct fields', () => {
@@ -348,6 +349,15 @@ describe('create-quox-plugin scaffolder', () => {
     });
 
     describe('agentic-team template', () => {
+        it('declares agentDefinition for the host-rendered sidebar and ships no hand-built chat', () => {
+            const dir = scaffold('test-team', 'agentic-team');
+            expect(listFiles(dir)).not.toContain('src/components/AgentChat.jsx');
+            const ad = readManifest(dir).agentDefinition;
+            expect(ad.id).toBe('test-team-lead');
+            expect(ad.color).toMatch(/^#/);
+            expect(ad.suggestions.length).toBeGreaterThan(0);
+        });
+
         it('generates correct file set (17 files)', () => {
             const dir = scaffold('test-team', 'agentic-team');
             const files = listFiles(dir);

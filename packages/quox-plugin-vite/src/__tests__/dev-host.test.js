@@ -113,6 +113,14 @@ describe('preview router', () => {
         expect(js).not.toMatch(/allow-same-origin['"]/);
     });
 
+    it('shows a labelled agent dock placeholder only when the manifest declares an agent', async () => {
+        const { buildPreviewPage } = require('../dev-host/page.js');
+        const withAgent = buildPreviewPage({ title: 'x', agent: { name: 'Helper', role: 'R', color: '#f59e0b' } });
+        expect(withAgent).toContain('The Quox host renders your agent sidebar here');
+        expect(withAgent).toContain('HELPER');
+        expect(buildPreviewPage({ title: 'x' })).not.toContain('agent sidebar');
+    });
+
     it('serves the frame for a valid channel only', async () => {
         const { base } = await boot();
         const ch = 'a'.repeat(32);

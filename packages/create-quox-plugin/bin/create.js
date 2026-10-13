@@ -200,6 +200,7 @@ function generateManifest(pluginName, displayName, author, description, category
             id: `${pluginName}-agent`,
             name: `${displayName} Agent`,
             role: 'specialist',
+            color: '#f59e0b',
             level: 1,
             domain: 'security',
             description: `Specialist security scanning agent for ${displayName}`,
@@ -427,6 +428,19 @@ function generateManifest(pluginName, displayName, author, description, category
             systemPrompt: `You are ${a.name}, a ${a.role} agent responsible for ${a.domain}.`,
         }));
 
+        // The Quox host renders the agent sidebar for the team lead beside the plugin
+        // (same component Quox's own agents use). Only agentDefinition is read for this.
+        base.agentDefinition = {
+            id: agentDefs[0].id,
+            name: agentDefs[0].name,
+            role: 'orchestrator',
+            color: agentDefs[0].color,
+            description: `Lead agent for the ${displayName} team`,
+            ownership: { source: 'plugin', plugin: pluginName },
+            systemPrompt: base.agents[0].systemPrompt,
+            suggestions: ['Deploy latest to staging', 'Check all service health', 'View team metrics'],
+        };
+
         base.toolDefinitions = toolDefs.map(t => ({
             name: t.name,
             description: t.desc,
@@ -574,10 +588,6 @@ function generateAgentStatusCard() {
 
 function generateToolCard() {
     return renderTemplate('specialist-agent/src/components/ToolCard.jsx');
-}
-
-function generateAgentChat(pluginName, displayName) {
-    return renderTemplate('specialist-agent/src/components/AgentChat.jsx', { displayName });
 }
 
 function generateSpecialistMock(displayName) {
@@ -763,10 +773,6 @@ function generateSharedContextPanel() {
 
 function generatePolicyBadges() {
     return renderTemplate('agentic-team/src/components/PolicyBadges.jsx');
-}
-
-function generateTeamChat() {
-    return renderTemplate('agentic-team/src/components/AgentChat.jsx');
 }
 
 function generateTeamMock(pluginName, displayName) {
@@ -976,7 +982,6 @@ function getTemplateFiles(pluginName, displayName, author, description, category
             files['src/views/SettingsPanel.jsx'] = generateSpecialistSettings(pluginName, displayName);
             files['src/components/AgentStatusCard.jsx'] = generateAgentStatusCard();
             files['src/components/ToolCard.jsx'] = generateToolCard();
-            files['src/components/AgentChat.jsx'] = generateAgentChat(pluginName, displayName);
             files['src/data/mock.js'] = generateSpecialistMock(displayName);
             if (mcpData) {
                 const resolvedToolNames = mcpData.resolvedToolNames || resolveMcpToolNameCollisions(mcpData.mcpTools).resolved;
@@ -997,7 +1002,6 @@ function getTemplateFiles(pluginName, displayName, author, description, category
             files['src/components/TaskQueue.jsx'] = generateTaskQueue();
             files['src/components/SharedContextPanel.jsx'] = generateSharedContextPanel();
             files['src/components/PolicyBadges.jsx'] = generatePolicyBadges();
-            files['src/components/AgentChat.jsx'] = generateTeamChat();
             files['src/data/mock.js'] = generateTeamMock(pluginName, displayName);
             break;
     }

@@ -9,7 +9,7 @@ npx create-quox-plugin ops-team --template agentic-team
 cd ops-team && npm install
 ```
 
-Files specific to this template: team/{teamDef,agents,personas,tools,policies}.js, views/*, components/{MemberCard,TaskQueue,SharedContextPanel,PolicyBadges,AgentChat}.jsx, data/mock.js. Every template also gets `src/lib/` (RPC wrapper, load hook, UI atoms), a project `README.md` and the Claude skill.
+Files specific to this template: team/{teamDef,agents,personas,tools,policies}.js, views/*, components/{MemberCard,TaskQueue,SharedContextPanel,PolicyBadges}.jsx, data/mock.js. The chat sidebar is rendered by the Quox host from `manifest.agentDefinition` (no AgentChat component to build). Every template also gets `src/lib/` (RPC wrapper, load hook, UI atoms), a project `README.md` and the Claude skill.
 
 ## 2. How it works
 

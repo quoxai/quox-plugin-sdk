@@ -62,7 +62,7 @@ function createPreviewRouter(ctx) {
         if ((url === '/' || url === '/index.html') && method === 'GET') {
             const meta = ctx.getMeta();
             res.setHeader('Content-Type', 'text/html');
-            res.end(buildPreviewPage({ title: meta.name || meta.pluginId }));
+            res.end(buildPreviewPage({ title: meta.name || meta.pluginId, agent: meta.agent || null }));
             return;
         }
         if (!url.startsWith(BASE + '/')) { next(); return; }
@@ -213,7 +213,14 @@ function attachDevPreview(server, options = {}) {
     }
 
     server.middlewares.use(createPreviewRouter({
-        getMeta: () => ({ pluginId, name: readManifest(root).name || pluginId, csp: FRAME_CSP }),
+        getMeta: () => {
+            const manifest = readManifest(root);
+            const ad = manifest.agentDefinition;
+            const agent = ad && typeof ad === 'object' && manifest.agentSidebar !== false
+                ? { name: String(ad.name || ad.id || pluginId), role: String(ad.role || ''), color: String(ad.color || '#a78bfa') }
+                : null;
+            return { pluginId, name: manifest.name || pluginId, csp: FRAME_CSP, agent };
+        },
         rpc,
         buildFrame,
         addEventClient: (res) => { clients.add(res); res.on('close', () => clients.delete(res)); },

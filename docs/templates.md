@@ -61,8 +61,8 @@ Common to all: `manifest.json`, `package.json`, `vite.config.js`, `README.md`, `
 | `service-bridge` | `views/SettingsPanel.jsx`, `components/AgentSidebar.jsx` (notes panel), `data/mock.js` |
 | `ui-feature` | `views/SettingsPanel.jsx`, `components/EmptyState.jsx`, `data/mock.js` |
 | `enterprise-extension` | `views/SettingsPanel.jsx`, `components/UsageMeter.jsx`, `components/UpgradeGate.jsx`, `data/mock.js`, `backend/`, `Dockerfile` |
-| `specialist-agent` | `agent/{agentDef,agentPersona,tools}.js`, `views/SettingsPanel.jsx`, `components/{AgentStatusCard,ToolCard,AgentChat}.jsx`, `data/mock.js` |
-| `agentic-team` | `team/{teamDef,agents,personas,tools,policies}.js`, `views/SettingsPanel.jsx`, `components/{MemberCard,TaskQueue,SharedContextPanel,PolicyBadges,AgentChat}.jsx`, `data/mock.js` |
+| `specialist-agent` | `agent/{agentDef,agentPersona,tools}.js`, `views/SettingsPanel.jsx`, `components/{AgentStatusCard,ToolCard}.jsx`, `data/mock.js` |
+| `agentic-team` | `team/{teamDef,agents,personas,tools,policies}.js`, `views/SettingsPanel.jsx`, `components/{MemberCard,TaskQueue,SharedContextPanel,PolicyBadges}.jsx`, `data/mock.js` |
 
 ## Tutorials
 

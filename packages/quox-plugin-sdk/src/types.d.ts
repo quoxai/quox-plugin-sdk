@@ -86,6 +86,8 @@ export interface AgentDefinition {
     id: string;
     name: string;
     role: 'orchestrator' | 'specialist' | 'analyst';
+    /** Accent colour (CSS hex) of the host-rendered agent sidebar. Default is a violet. */
+    color?: string;
     level: number;
     domain: string;
     description: string;
@@ -241,8 +243,16 @@ export interface PluginManifest {
     nocIntegration?: NocIntegration;
     /** Ignored by the community sandbox. */
     specialist?: SpecialistAgent;
-    /** Agent registration is not available to community plugins. */
+    /**
+     * Declare an agent and the Quox host renders the agent sidebar next to your
+     * plugin, the same component Quox's own agents use, so it always matches.
+     * The host reads `id`, `name`, `role`, `color` and `suggestions` (max 6) for
+     * the sidebar. Do not build your own chat panel inside the plugin frame, and
+     * note that no data from the plugin frame is sent to the chat as context.
+     */
     agentDefinition?: AgentDefinition;
+    /** Set `false` to opt out of the host-rendered agent sidebar even when `agentDefinition` is declared. */
+    agentSidebar?: boolean;
     /** Agent registration is not available to community plugins. */
     agentPersona?: AgentPersona;
     /** Agent registration is not available to community plugins. */

@@ -166,7 +166,7 @@ The same map is exported as `COMMUNITY_PERMISSION_FOR_METHOD` from `quox-plugin-
 
 `manifest.json` requires `id`, `name` and `version`. The id must match `MANIFEST_ID_PATTERN` (`^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$`) and must not start with a reserved prefix (`core-`, `system-`, `quox-`, `admin-`). Both constants are exported from `quox-plugin-sdk`, along with `validateManifestId(id)`.
 
-Fields the host reads: `id`, `name`, `version`, `author`, `permissions`, `sidebar`, `routeGuards`, `integrity`, `backend`. Fields such as `agentDefinition`, `team`, `comparison` and the marketing fields are accepted for official plugins and ignored by the community sandbox. See `PluginManifest` in `types.d.ts`.
+Fields the host reads: `id`, `name`, `version`, `author`, `permissions`, `sidebar`, `routeGuards`, `integrity`, `backend`. If the manifest declares `agentDefinition` (`id`, `name`, `role`, `color`, `suggestions`) the Quox host renders the agent sidebar next to your plugin, the same component Quox's own agents use; set `agentSidebar: false` to opt out. Do not hand-build a chat panel. Fields such as `team`, `comparison` and the marketing fields are accepted for official plugins and ignored by the community sandbox. See `PluginManifest` in `types.d.ts`.
 
 ## Testing
 

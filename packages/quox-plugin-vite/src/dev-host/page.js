@@ -3,7 +3,18 @@ function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function buildPreviewPage({ title = 'plugin' } = {}) {
+function buildAgentDock(agent) {
+    if (!agent) return '';
+    const color = /^#[0-9a-fA-F]{3,8}$/.test(agent.color || '') ? agent.color : '#a78bfa';
+    return `<div id="agent-dock" data-testid="dev-agent-dock" style="border-color:${color}">
+      <div class="dock-title" style="color:${color}">${escapeHtml(String(agent.name || 'Agent').toUpperCase())}</div>
+      <div class="dock-role">${escapeHtml(agent.role || '')}</div>
+      <p>The Quox host renders your agent sidebar here.</p>
+      <p>This is a placeholder so the layout is representative. In Quox the same chat component Quox's own agents use is shown beside your plugin, fed from <code>manifest.agentDefinition</code>. Set <code>"agentSidebar": false</code> in the manifest to opt out.</p>
+    </div>`;
+}
+
+function buildPreviewPage({ title = 'plugin', agent = null } = {}) {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -22,6 +33,9 @@ function buildPreviewPage({ title = 'plugin' } = {}) {
   #main { display: flex; flex: 1; min-height: 0; }
   #stage { flex: 1; min-width: 0; background: #0b1226; }
   #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #agent-dock { width: 340px; box-sizing: border-box; margin: 8px; padding: 14px; border: 1px dashed; border-radius: 14px; color: #fff; }
+  #agent-dock .dock-title { font-weight: 700; letter-spacing: 0.06em; }
+  #agent-dock .dock-role { margin-bottom: 10px; }
   aside { width: 340px; border-left: 1px solid rgba(255,255,255,0.25); display: flex; flex-direction: column; min-height: 0; }
   aside h2 { font-size: 13px; margin: 0; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.25); }
   #log { flex: 1; overflow: auto; padding: 8px 12px; font: 12px/1.5 ui-monospace, monospace; }
@@ -38,6 +52,7 @@ function buildPreviewPage({ title = 'plugin' } = {}) {
   <div id="banner" hidden></div>
   <div id="main">
     <div id="stage"></div>
+    ${buildAgentDock(agent)}
     <aside><h2>window.quox calls</h2><div id="log"></div></aside>
   </div>
 </div>
