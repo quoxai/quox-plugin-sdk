@@ -65,4 +65,4 @@ Tests use Vitest and cover:
 - Include test coverage for new functionality
 - Test scaffolding with `node packages/create-quox-plugin/bin/create.js test-plugin --template <name>` and verify the output
 
-By contributing you agree your contribution is licensed under the MIT licence. Security reports: see SECURITY.md.
+By contributing you agree your contribution is licensed under the Apache License 2.0. Security reports: see SECURITY.md.

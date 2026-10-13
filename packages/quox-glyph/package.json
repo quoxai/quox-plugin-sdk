@@ -9,5 +9,5 @@
     "test": "node --test test/"
   },
   "keywords": ["quox", "quoxglyph", "terminal", "cli"],
-  "license": "UNLICENSED"
+  "license": "Apache-2.0"
 }

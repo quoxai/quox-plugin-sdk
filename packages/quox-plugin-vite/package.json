@@ -12,7 +12,7 @@
     "!src/__tests__",
     "assets",
     "scripts",
-    "LICENSE"
+    "LICENSE", "NOTICE"
   ],
   "scripts": {
     "sync-glass-css": "node scripts/sync-glass-css.mjs"
@@ -27,7 +27,7 @@
     "ed25519"
   ],
   "author": "Quox",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/quoxai/quox-plugin-sdk.git",

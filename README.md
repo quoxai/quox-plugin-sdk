@@ -65,4 +65,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues to security@quox.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

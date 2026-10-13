@@ -18,5 +18,5 @@
     "jsdom": "^29.0.1",
     "vitest": "^3.0.0"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }

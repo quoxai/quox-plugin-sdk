@@ -10,7 +10,7 @@
     "lib",
     "templates",
     "skill",
-    "LICENSE"
+    "LICENSE", "NOTICE"
   ],
   "keywords": [
     "quox",
@@ -20,7 +20,7 @@
     "create",
     "generator"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Quox",
   "repository": {
     "type": "git",

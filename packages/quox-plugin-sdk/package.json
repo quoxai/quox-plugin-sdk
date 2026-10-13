@@ -20,11 +20,11 @@
     "src/aware.js",
     "src/aware.d.ts",
     "src/types.d.ts",
-    "LICENSE"
+    "LICENSE", "NOTICE"
   ],
   "keywords": ["quox", "plugin", "sdk", "sandbox", "quoxcore"],
   "author": "Quox",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/quoxai/quox-plugin-sdk.git",

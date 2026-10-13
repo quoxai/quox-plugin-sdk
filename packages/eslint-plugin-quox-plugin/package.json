@@ -11,7 +11,7 @@
   "files": [
     "src/index.js",
     "src/rules",
-    "LICENSE"
+    "LICENSE", "NOTICE"
   ],
   "scripts": {
     "test": "vitest run"
@@ -25,7 +25,7 @@
   },
   "keywords": ["eslint", "eslint-plugin", "eslintplugin", "quox", "plugin"],
   "author": "Quox",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/quoxai/quox-plugin-sdk.git",
