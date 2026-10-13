@@ -23,7 +23,7 @@ Everything else goes through `window.quox`, a promise-based API bridged to the h
 npx create-quox-plugin my-plugin
 cd my-plugin
 npm install
-npm run build      # writes dist/manifest.json, dist/plugin.esm.js, dist/plugin.css
+npm run build      # writes dist/plugin.esm.js and dist/plugin.css (manifest.json stays at the project root)
 npm run validate   # checks the manifest and bundle
 npm run sign       # writes dist/signature.json using ./.keys/plugin-signing.pem
 ```
@@ -34,7 +34,7 @@ Install through the dashboard (Settings, Plugins), or from the CLI as an org adm
 
 ```bash
 quox plugin install \
-  --manifest dist/manifest.json \
+  --manifest manifest.json \
   --bundle dist/plugin.esm.js \
   --css dist/plugin.css \
   --signature dist/signature.json
