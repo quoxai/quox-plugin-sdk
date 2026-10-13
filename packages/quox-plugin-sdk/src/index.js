@@ -28,6 +28,26 @@ export function validateManifestId(id) {
     return null;
 }
 
+/**
+ * Which manifest.permissions entry the Quox host requires for each window.quox
+ * RPC method in the community sandbox. Enforced fail-closed: an absent or
+ * non-array manifest.permissions grants nothing. A refused call rejects with
+ * Error('permission_denied: <perm>'). navigate, getUser and onEvent need no
+ * permission.
+ */
+export const COMMUNITY_PERMISSION_FOR_METHOD = Object.freeze({
+    'storage.get': 'storage',
+    'storage.set': 'storage',
+    'storage.remove': 'storage',
+    'storage.keys': 'storage',
+    'storage.getAll': 'storage',
+    fetch: 'network',
+    'memory.save': 'memory',
+    'memory.search': 'memory',
+    'aee.emit': 'aee',
+    notify: 'notifications',
+});
+
 function hostWindow() {
     return typeof window !== 'undefined' ? window : undefined;
 }

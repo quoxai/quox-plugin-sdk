@@ -137,6 +137,27 @@ Only your own `plugin.css` is injected into the frame. Host stylesheets are not 
 
 The ESLint plugin `eslint-plugin-quox-plugin` flags these (`no-host-only-globals`, `no-cache-as-primary-storage`).
 
+## Permissions
+
+The sandbox host enforces `manifest.permissions` on every `window.quox` call, fail-closed: an absent or non-array `permissions` grants nothing. A refused call rejects with `Error('permission_denied: <perm>')`.
+
+| Call | Permission needed |
+|------|-------------------|
+| `storage.get`, `storage.set`, `storage.remove`, `storage.keys`, `storage.getAll` | `storage` |
+| `fetch` | `network` |
+| `memory.save`, `memory.search` | `memory` |
+| `aee.emit` | `aee` |
+| `notify` | `notifications` |
+| `navigate`, `getUser`, `onEvent` | none |
+
+`sidebar` and `tools` are declarative only: they are listed for the admin but not enforced on calls. The admin reviews the declared permissions at install time, so declare exactly what you use.
+
+The same map is exported as `COMMUNITY_PERMISSION_FOR_METHOD` from `quox-plugin-sdk` (type `PluginPermission`). Three tools check it for you:
+
+- The dev preview (`quox-plugin-vite`) enforces your `manifest.json` permissions with the same error text, so a missing declaration fails in dev exactly as in production.
+- `quox-plugin validate` scans the built bundle: a call whose permission is not declared is an error naming the permission to add; a declared but unused permission is a warning (least privilege). The scan is a regex over member names (`.storage.`, `.fetch(`, `.memory.`, `.aee.emit`, `.notify(`), so it can over-report if unrelated code has a method with one of those names.
+- `createMockQuox({ permissions })` / `createMockQuox({ manifest })` enforce the gate in unit tests. With neither (and no `strictPermissions: true`) everything is granted, for convenience.
+
 ## Manifest
 
 `manifest.json` requires `id`, `name` and `version`. The id must match `MANIFEST_ID_PATTERN` (`^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$`) and must not start with a reserved prefix (`core-`, `system-`, `quox-`, `admin-`). Both constants are exported from `quox-plugin-sdk`, along with `validateManifestId(id)`.

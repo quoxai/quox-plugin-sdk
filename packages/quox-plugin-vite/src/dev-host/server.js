@@ -126,6 +126,7 @@ function attachDevPreview(server, options = {}) {
         pluginId,
         backendUrl: options.devBackendUrl || process.env.QUOX_DEV_BACKEND_URL || '',
         user: options.user,
+        permissions: manifest.permissions,
     });
 
     const state = { bundle: null, css: '', error: null, deps: null };

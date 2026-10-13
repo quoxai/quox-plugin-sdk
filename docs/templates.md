@@ -6,14 +6,16 @@
 
 | Template | Use case | Manifest permissions | What the view does |
 |----------|----------|----------------------|--------------------|
-| `basic` | Hello world, learning the sandbox | sidebar, storage, notifications | `getUser()` plus a counter in plugin storage |
+| `basic` | Hello world, learning the sandbox | sidebar, storage, notifications, network | `getUser()` plus a counter in plugin storage |
 | `monitoring-dashboard` | Service status | + network | Polls `GET /status` on your backend, status table |
 | `fleet-management` | Hosts with destructive actions | + network, aee, tools | Host table, confirm modal, `aee.emit` audit, `POST /hosts/<id>/<action>` |
-| `service-bridge` | Third-party integration | + network, aee, tools, memory | Items and metrics from your backend, memory panel |
-| `ui-feature` | Client-side tool | sidebar, storage, notifications | Card grid persisted in plugin storage |
-| `enterprise-extension` | Tiers, usage, backend | + network, memory, aee | Usage meters, memory search, upgrade gates, backend skeleton |
-| `specialist-agent` | Agent with tools and persona | + network, aee, tools, memory | Agent status, tool runner, ask-the-agent panel |
-| `agentic-team` | Multi-agent team | + network, aee, tools, memory | Members, policies, task queue, chat with the lead |
+| `service-bridge` | Third-party integration | + network, tools, memory | Items and metrics from your backend, memory panel |
+| `ui-feature` | Client-side tool | sidebar, storage, notifications, network | Card grid persisted in plugin storage |
+| `enterprise-extension` | Tiers, usage, backend | + network, memory | Usage meters, memory search, upgrade gates, backend skeleton |
+| `specialist-agent` | Agent with tools and persona | + network, aee, tools | Agent status, tool runner, ask-the-agent panel |
+| `agentic-team` | Multi-agent team | + network, tools | Members, policies, task queue, chat with the lead |
+
+Each manifest declares exactly the permissions its code uses (the host refuses undeclared calls, see [Permissions](./plugin-api.md#permissions)); a test scaffolds every template and checks declared equals used. `tools` and `sidebar` are declarative and not enforced on calls.
 
 ## What every template gives you
 

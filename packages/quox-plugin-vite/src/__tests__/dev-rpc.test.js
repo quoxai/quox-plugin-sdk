@@ -3,7 +3,8 @@ import { describe, it, expect } from 'vitest';
 const { createDevRpc } = require('../dev-host/rpc.js');
 
 describe('dev rpc mock (answers window.quox calls)', () => {
-    const make = (extra = {}) => createDevRpc({ pluginId: 'my-plugin', ...extra });
+    const ALL = ['storage', 'network', 'memory', 'aee', 'notifications'];
+    const make = (extra = {}) => createDevRpc({ pluginId: 'my-plugin', permissions: ALL, ...extra });
 
     it('storage round-trips and lists', async () => {
         const rpc = make();
@@ -82,5 +83,27 @@ describe('dev rpc mock (answers window.quox calls)', () => {
 
     it('rejects invalid plugin ids', () => {
         expect(() => createDevRpc({ pluginId: '../x' })).toThrow('invalid_plugin_id');
+    });
+});
+
+describe('dev rpc permission gate (parity with the host mediator)', () => {
+    const { PERMISSION_FOR_METHOD } = require('../dev-host/rpc.js');
+    it('pins the same method to permission map as the SDK', async () => {
+        const sdk = await import('../../../quox-plugin-sdk/src/index.js');
+        expect({ ...PERMISSION_FOR_METHOD }).toEqual({ ...sdk.COMMUNITY_PERMISSION_FOR_METHOD });
+    });
+    it('is fail-closed: no permissions means every gated method is refused', async () => {
+        const rpc = createDevRpc({ pluginId: 'my-plugin' });
+        const args = { key: 'k', path: 'x', entry: {}, query: 'q', intent: 'i', message: 'm' };
+        for (const [method, perm] of Object.entries(PERMISSION_FOR_METHOD)) {
+            await expect(rpc.handle(method, args)).rejects.toThrow(`permission_denied: ${perm}`);
+        }
+        await expect(rpc.handle('getUser', {})).resolves.toBeTruthy();
+        await expect(rpc.handle('navigate', {})).resolves.toBe(true);
+    });
+    it('allows exactly what is declared', async () => {
+        const rpc = createDevRpc({ pluginId: 'my-plugin', permissions: ['storage'] });
+        await rpc.handle('storage.set', { key: 'a', value: 1 });
+        await expect(rpc.handle('fetch', { path: '/x' })).rejects.toThrow('permission_denied: network');
     });
 });

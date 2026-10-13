@@ -61,7 +61,7 @@ describe('create-quox-plugin scaffolder', () => {
         it('has correct permissions', () => {
             const dir = scaffold('test-basic', 'basic');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications']);
+            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications', 'network']);
         });
 
         it('has correct plugin ID', () => {
@@ -206,7 +206,7 @@ describe('create-quox-plugin scaffolder', () => {
         it('has minimal permissions', () => {
             const dir = scaffold('test-ui', 'ui-feature');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications']);
+            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications', 'network']);
         });
     });
 
@@ -252,11 +252,11 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.configSchema.advancedAnalytics.enterprise).toBe(true);
         });
 
-        it('includes memory and aee permissions', () => {
+        it('includes memory permission (no aee: never used)', () => {
             const dir = scaffold('test-enterprise', 'enterprise-extension');
             const manifest = readManifest(dir);
             expect(manifest.permissions).toContain('memory');
-            expect(manifest.permissions).toContain('aee');
+            expect(manifest.permissions).not.toContain('aee');
         });
     });
 
@@ -329,12 +329,12 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.specialist.capabilities.length).toBeGreaterThan(0);
         });
 
-        it('includes tools, aee, and memory permissions', () => {
+        it('includes tools and aee (no memory: never used) permissions', () => {
             const dir = scaffold('test-agent', 'specialist-agent');
             const manifest = readManifest(dir);
             expect(manifest.permissions).toContain('tools');
             expect(manifest.permissions).toContain('aee');
-            expect(manifest.permissions).toContain('memory');
+            expect(manifest.permissions).not.toContain('memory');
         });
 
         it('has tool names with plugin_ prefix', () => {
@@ -440,12 +440,12 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.team.sharedContext.length).toBeGreaterThan(0);
         });
 
-        it('includes tools, aee, and memory permissions', () => {
+        it('includes tools only (no aee or memory: never used) permissions', () => {
             const dir = scaffold('test-team', 'agentic-team');
             const manifest = readManifest(dir);
             expect(manifest.permissions).toContain('tools');
-            expect(manifest.permissions).toContain('aee');
-            expect(manifest.permissions).toContain('memory');
+            expect(manifest.permissions).not.toContain('aee');
+            expect(manifest.permissions).not.toContain('memory');
         });
 
         it('all agents have valid DEFCON levels', () => {

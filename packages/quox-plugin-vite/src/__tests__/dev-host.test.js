@@ -89,7 +89,7 @@ describe('preview router', () => {
     afterEach(() => new Promise((r) => (srv ? srv.close(r) : r())));
 
     async function boot(overrides = {}) {
-        const rpc = createDevRpc({ pluginId: 'my-plugin' });
+        const rpc = createDevRpc({ pluginId: 'my-plugin', permissions: overrides.permissions || ['network'] });
         const frames = [];
         const router = createPreviewRouter({
             getMeta: () => ({ pluginId: 'my-plugin', name: 'My Plugin' }),
@@ -133,6 +133,7 @@ describe('preview router', () => {
         expect(await (await post({ method: 'getUser', args: {} })).json()).toEqual({ ok: true, value: { userId: 'dev-user', orgId: 'dev-org', role: 'admin', tier: 'pro' } });
         const fr = await (await post({ method: 'fetch', args: { path: '/x' } })).json();
         expect(fr.value.status).toBe(404);
+        expect(await (await post({ method: 'storage.get', args: { key: 'a' } })).json()).toEqual({ ok: false, error: 'permission_denied: storage' });
         expect(await (await post({ method: 'nope' })).json()).toEqual({ ok: false, error: 'unknown_method:nope' });
         const cross = await post({ method: 'getUser' }, { Origin: 'https://evil.example' });
         expect(cross.status).toBe(403);

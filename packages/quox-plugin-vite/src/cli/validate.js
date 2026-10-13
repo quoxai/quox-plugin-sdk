@@ -63,6 +63,39 @@ function scanBundle(code) {
     return findings;
 }
 
+// Static permission scan. Pragmatic: a regex over member names on any object,
+// so it can over-report if unrelated code has a `.fetch(` / `.notify(` method.
+const USAGE_PATTERNS = [
+    ['storage', /\.\s*storage\s*\.\s*(?:get|set|remove|keys|getAll)\b/],
+    ['network', /\.\s*fetch\s*\(/],
+    ['memory', /\.\s*memory\s*\.\s*(?:save|search)\b/],
+    ['aee', /\.\s*aee\s*\.\s*emit\b/],
+    ['notifications', /\.\s*notify\s*\(/],
+];
+
+/** Permissions a built bundle appears to need (sandbox-enforced ones only). */
+function usedPermissions(code) {
+    return USAGE_PATTERNS.filter(([, re]) => re.test(code)).map(([perm]) => perm);
+}
+
+function checkPermissions(code, manifest) {
+    const errors = [];
+    const warnings = [];
+    const declared = new Set(Array.isArray(manifest && manifest.permissions) ? manifest.permissions : []);
+    const used = usedPermissions(code);
+    for (const perm of used) {
+        if (!declared.has(perm)) {
+            errors.push(`bundle calls a window.quox method that needs the "${perm}" permission, but manifest.json permissions does not declare it. Add "${perm}" to permissions, or the host refuses the call with permission_denied: ${perm}.`);
+        }
+    }
+    for (const perm of ['storage', 'network', 'memory', 'aee', 'notifications']) {
+        if (declared.has(perm) && !used.includes(perm)) {
+            warnings.push(`manifest.json declares the "${perm}" permission but the bundle does not appear to use it. Remove it for least privilege.`);
+        }
+    }
+    return { errors, warnings };
+}
+
 function validate({ dir = '.' } = {}) {
     const root = path.resolve(dir);
     const errors = [];
@@ -92,6 +125,11 @@ function validate({ dir = '.' } = {}) {
         const code = fs.readFileSync(bundlePath, 'utf8');
         bundleBytes = Buffer.byteLength(code);
         for (const f of scanBundle(code)) errors.push(f.message);
+        if (manifest) {
+            const p = checkPermissions(code, manifest);
+            errors.push(...p.errors);
+            warnings.push(...p.warnings);
+        }
     }
     if (!fs.existsSync(cssPath)) {
         warnings.push('dist/plugin.css not found: the sandbox gets no host styles, so an unstyled plugin will render bare (the quox-plugin-vite build emits it unless qxCss:false and no CSS is imported)');
@@ -111,4 +149,4 @@ function validate({ dir = '.' } = {}) {
     return { ok: errors.length === 0, errors, warnings, manifest };
 }
 
-module.exports = { validate, validateManifest, scanBundle, PLUGIN_ID_RE, RESERVED_PREFIXES };
+module.exports = { validate, validateManifest, scanBundle, usedPermissions, checkPermissions, PLUGIN_ID_RE, RESERVED_PREFIXES };

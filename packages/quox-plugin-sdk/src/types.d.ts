@@ -273,13 +273,21 @@ export interface PluginManifest {
     marketingPoints?: string[];
 }
 
+/**
+ * Enforced by the sandbox host (fail-closed, see COMMUNITY_PERMISSION_FOR_METHOD):
+ * storage, network, memory, aee, notifications. A call without the matching
+ * declaration rejects with Error('permission_denied: <perm>').
+ * 'sidebar' and 'tools' are declarative only: shown to the admin at install
+ * time, not enforced on window.quox calls in the sandbox.
+ */
 export type PluginPermission =
     | 'sidebar'
     | 'storage'
     | 'network'
     | 'memory'
     | 'notifications'
-    | 'aee';
+    | 'aee'
+    | 'tools';
 
 export interface SidebarItem {
     /** Route path, normally `/plugins/<id>` or a sub-path of it. */
