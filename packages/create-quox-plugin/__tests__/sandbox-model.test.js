@@ -6,6 +6,15 @@ import os from 'os';
 
 const CREATE_SCRIPT = path.resolve(__dirname, '../bin/create.js');
 const { usedPermissions } = require('../../quox-plugin-vite/src/cli/validate.js');
+
+// Which declared permission each shared helper in templates/_shared/src/lib needs.
+const LIB_HELPER_PERMISSIONS = {
+    api: ['network'],
+    loadValue: ['storage'],
+    saveValue: ['storage'],
+    toast: ['notifications'],
+    useConfig: ['storage', 'notifications', 'network'],
+};
 const ENFORCED = ['storage', 'network', 'memory', 'aee', 'notifications'];
 const QX = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/qx-classes.json'), 'utf8'));
 const QX_SET = new Set(QX.classes);
@@ -84,11 +93,19 @@ describe('scaffolded templates follow the community sandbox model', () => {
 
             it('manifest declares exactly the sandbox permissions its source uses', () => {
                 const manifest = JSON.parse(fs.readFileSync(path.join(dirs[t], 'manifest.json'), 'utf8'));
-                const src = walk(dirs[t])
-                    .filter(f => f.startsWith('src/') && /\.(jsx|js)$/.test(f))
+                // The shared src/lib helpers ship in every scaffold but are
+                // tree-shaken out unless used, so count a helper's permissions
+                // only when the template's own code imports it (the built
+                // bundle, which validate checks, behaves the same way).
+                const own = walk(dirs[t])
+                    .filter(f => f.startsWith('src/') && !f.startsWith('src/lib/') && /\.(jsx|js)$/.test(f))
                     .map(f => fs.readFileSync(path.join(dirs[t], f), 'utf8')).join('\n');
+                const used = new Set(usedPermissions(own));
+                for (const [helper, perms] of Object.entries(LIB_HELPER_PERMISSIONS)) {
+                    if (new RegExp(`import[^;]*\\b${helper}\\b[^;]*from '\\.\\./lib/`).test(own)) perms.forEach(p => used.add(p));
+                }
                 const declared = manifest.permissions.filter(p => ENFORCED.includes(p)).sort();
-                expect(declared).toEqual(usedPermissions(src).sort());
+                expect(declared).toEqual([...used].sort());
             });
 
             it('no source or bundle input uses window.quox memory or aee (not available to community plugins yet)', () => {
@@ -271,5 +288,13 @@ describe('create-quox-plugin package.json (publish fields)', () => {
     it('does not strip dotfiles: templates ship _gitignore, not .gitignore', () => {
         expect(fs.existsSync(path.resolve(__dirname, '../templates/_shared/_gitignore'))).toBe(true);
         expect(fs.existsSync(path.resolve(__dirname, '../templates/_shared/.gitignore'))).toBe(false);
+    });
+});
+
+describe('shared lib helper permission map stays complete', () => {
+    it('every export of _shared/src/lib/api.js is mapped', () => {
+        const src = fs.readFileSync(path.join(__dirname, '..', 'templates', '_shared', 'src', 'lib', 'api.js'), 'utf8');
+        const exported = [...src.matchAll(/export (?:async )?function (\w+)/g)].map(m => m[1]);
+        for (const name of exported) expect(Object.keys(LIB_HELPER_PERMISSIONS)).toContain(name);
     });
 });

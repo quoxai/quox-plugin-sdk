@@ -61,7 +61,8 @@ describe('create-quox-plugin scaffolder', () => {
         it('has correct permissions', () => {
             const dir = scaffold('test-basic', 'basic');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications', 'network']);
+            // basic never calls a backend, so no 'network' (least privilege).
+            expect(manifest.permissions).toEqual(['sidebar', 'storage', 'notifications']);
         });
 
         it('has correct plugin ID', () => {

@@ -66,7 +66,7 @@ function generateManifest(pluginName, displayName, author, description, category
         description,
         category,
         license: 'free',
-        permissions: ['sidebar', 'storage', 'notifications', 'network'],
+        permissions: ['sidebar', 'storage', 'notifications'],
         sidebar: [{ path: `/plugins/${pluginName}`, label: displayName, icon: 'puzzle' }],
         routes: { [`/plugins/${pluginName}`]: 'MainView' },
         minQuoxVersion: '1.0.0',

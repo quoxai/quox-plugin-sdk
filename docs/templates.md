@@ -6,7 +6,7 @@
 
 | Template | Use case | Manifest permissions | What the view does |
 |----------|----------|----------------------|--------------------|
-| `basic` | Hello world, learning the sandbox | sidebar, storage, notifications, network | `getUser()` plus a counter in plugin storage |
+| `basic` | Hello world, learning the sandbox | sidebar, storage, notifications | `getUser()` plus a counter in plugin storage |
 | `monitoring-dashboard` | Service status | + network | Polls `GET /status` on your backend, status table |
 | `fleet-management` | Hosts with destructive actions | + network, tools | Host table, confirm modal, `POST /hosts/<id>/<action>` |
 | `service-bridge` | Third-party integration | + network, tools | Items and metrics from your backend, notes panel (plugin storage) |
