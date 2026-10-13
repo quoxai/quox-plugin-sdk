@@ -22,10 +22,10 @@ The collector proxies all requests, adding:
 
 ## Creating a Backend Plugin
 
-### 1. Scaffold with backend template
+### 1. Scaffold with the enterprise-extension template (it ships a backend/)
 
 ```bash
-npx create-quox-plugin my-monitor --template with-backend
+npx create-quox-plugin my-monitor --template enterprise-extension
 ```
 
 This adds a `backend` field to your manifest:
