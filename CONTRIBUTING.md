@@ -7,18 +7,20 @@ cd quox-plugin-sdk
 npm install
 ```
 
-The monorepo uses npm workspaces with 3 packages:
+The monorepo uses npm workspaces with these packages:
 
 | Package | Path | Purpose |
 |---------|------|---------|
 | `quox-plugin-sdk` | `packages/quox-plugin-sdk/` | Core types, runtime helpers, testing utilities |
 | `create-quox-plugin` | `packages/create-quox-plugin/` | Interactive scaffolder CLI |
-| `quox-plugin-vite` | `packages/quox-plugin-vite/` | Vite build plugin + ZIP packaging |
+| `quox-plugin-vite` | `packages/quox-plugin-vite/` | Vite build plugin, `quox-plugin` CLI |
+| `eslint-plugin-quox-plugin` | `packages/eslint-plugin-quox-plugin/` | Lint rules for sandbox constraints |
 
 ## Running Tests
 
 ```bash
-npm test
+npm test           # vitest + node:test
+npm run check:pack # tarball contents vs files allowlist
 ```
 
 Tests use Vitest and cover:
@@ -49,11 +51,10 @@ Tests use Vitest and cover:
 
 5. **Update docs**:
    - Add to `docs/templates.md` comparison table
-   - Add to `README.md` templates section
-
+   
 ## Code Style
 
-- No TypeScript compilation — all source is plain JS with JSDoc + .d.ts type declarations
+- No TypeScript compilation - all source is plain JS with JSDoc + .d.ts type declarations
 - CJS (`require`) for Node.js scripts (scaffolder, Vite plugin, signing scripts)
 - ESM (`import/export`) for SDK runtime code (loaded in browser via QuoxCORE)
 - Generated plugin code uses JSX (compiled by Vite + React plugin)
@@ -62,5 +63,6 @@ Tests use Vitest and cover:
 
 - One template per PR if adding new templates
 - Include test coverage for new functionality
-- Update CODEBASE_MAP.md if file counts change
 - Test scaffolding with `node packages/create-quox-plugin/bin/create.js test-plugin --template <name>` and verify the output
+
+By contributing you agree your contribution is licensed under the MIT licence. Security reports: see SECURITY.md.

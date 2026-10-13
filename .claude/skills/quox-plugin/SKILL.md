@@ -176,7 +176,7 @@ Audit a plugin for completeness.
 To install this skill for use with Claude Code:
 
 ```bash
-cp -r /home/control/quox-plugin-sdk/.claude/skills/quox-plugin ~/.claude/skills/
+cp -r .claude/skills/quox-plugin ~/.claude/skills/   # from a clone of quoxai/quox-plugin-sdk
 ```
 
 Then invoke with `/quox-plugin scaffold`, `/quox-plugin manifest`, etc.

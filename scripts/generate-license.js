@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// DEPRECATED: use the `quox-plugin` bin from quox-plugin-vite (`quox-plugin keygen` / `quox-plugin sign`) for community plugin signing. Kept for official/legacy signing flows.
 /**
  * Generate a signed license for a QuoxCORE plugin.
  *

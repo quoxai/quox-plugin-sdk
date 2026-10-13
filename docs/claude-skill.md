@@ -7,7 +7,7 @@ The Plugin SDK includes a Claude Code skill that helps developers build QuoxCORE
 Copy the skill to your Claude Code skills directory:
 
 ```bash
-cp -r /home/control/quox-plugin-sdk/.claude/skills/quox-plugin ~/.claude/skills/
+cp -r .claude/skills/quox-plugin ~/.claude/skills/   # from a clone of quoxai/quox-plugin-sdk
 ```
 
 ## Usage
