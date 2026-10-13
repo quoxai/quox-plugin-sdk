@@ -123,3 +123,50 @@ describe('deprecated helpers', () => {
         expect(() => setupGlassMocks()).toThrow(/plugin\.css/);
     });
 });
+
+describe('createMockQuox permission gate', () => {
+    it('grants everything by default', async () => {
+        const q = createMockQuox();
+        await q.storage.set('a', 1);
+        expect(await q.storage.get('a')).toBe(1);
+        await q.notify('hi');
+    });
+    it('rejects with permission_denied for every gated method when nothing is granted', async () => {
+        const q = createMockQuox({ strictPermissions: true });
+        const calls = {
+            storage: [() => q.storage.get('k'), () => q.storage.set('k', 1), () => q.storage.remove('k'), () => q.storage.keys(), () => q.storage.getAll()],
+            network: [() => q.fetch('x')],
+            memory: [() => q.memory.save({}), () => q.memory.search('x')],
+            aee: [() => q.aee.emit('i', {})],
+            notifications: [() => q.notify('m')],
+        };
+        for (const [perm, fns] of Object.entries(calls)) {
+            for (const fn of fns) await expect(fn()).rejects.toThrow(`permission_denied: ${perm}`);
+        }
+        await expect(q.getUser()).resolves.toBeTruthy();
+        await expect(q.navigate('/x')).resolves.toBeUndefined();
+        expect(() => q.onEvent(() => {})).not.toThrow();
+    });
+    it('honours an explicit permissions list', async () => {
+        const q = createMockQuox({ permissions: ['storage'] });
+        await q.storage.set('k', 1);
+        await expect(q.fetch('x')).rejects.toThrow('permission_denied: network');
+    });
+    it('reads permissions from a manifest, fail-closed when absent', async () => {
+        const ok = createMockQuox({ manifest: { permissions: ['network'] } });
+        expect((await ok.fetch('x')).status).toBe(404);
+        const none = createMockQuox({ manifest: { id: 'p' } });
+        await expect(none.fetch('x')).rejects.toThrow('permission_denied: network');
+    });
+    it('installMockQuox passes the gate options through', async () => {
+        const q = installMockQuox({ manifest: { permissions: [] } });
+        await expect(window.quox.storage.get('k')).rejects.toThrow('permission_denied: storage');
+        q.uninstall();
+    });
+    it('exports the same map the gate uses', async () => {
+        const { COMMUNITY_PERMISSION_FOR_METHOD: m } = await import('../index.js');
+        expect(m.fetch).toBe('network');
+        expect(m['aee.emit']).toBe('aee');
+        expect(Object.keys(m)).toHaveLength(10);
+    });
+});

@@ -4,6 +4,12 @@ export interface MockQuoxOptions {
     pluginId?: string;
     user?: Partial<{ userId: string; orgId: string; role: string; tier: string }>;
     fetch?: (path: string, options: any) => { status: number; ok?: boolean; body?: any } | Promise<{ status: number; ok?: boolean; body?: any }>;
+    /** Granted permissions, enforced like the host. Default (no permissions/manifest/strictPermissions): all granted. */
+    permissions?: string[];
+    /** Your manifest.json object: its permissions are used, fail-closed (absent = none). */
+    manifest?: { permissions?: string[] };
+    /** With no permissions/manifest, grant nothing instead of everything. */
+    strictPermissions?: boolean;
     sharedDeps?: SharedDeps | Record<string, unknown>;
 }
 

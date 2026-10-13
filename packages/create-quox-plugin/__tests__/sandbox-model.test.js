@@ -5,6 +5,8 @@ import path from 'path';
 import os from 'os';
 
 const CREATE_SCRIPT = path.resolve(__dirname, '../bin/create.js');
+const { usedPermissions } = require('../../quox-plugin-vite/src/cli/validate.js');
+const ENFORCED = ['storage', 'network', 'memory', 'aee', 'notifications'];
 const QX = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/qx-classes.json'), 'utf8'));
 const QX_SET = new Set(QX.classes);
 
@@ -78,6 +80,15 @@ describe('scaffolded templates follow the community sandbox model', () => {
                     for (const re of FORBIDDEN) if (re.test(text)) hits.push(`${rel}: ${re}`);
                 }
                 expect(hits).toEqual([]);
+            });
+
+            it('manifest declares exactly the sandbox permissions its source uses', () => {
+                const manifest = JSON.parse(fs.readFileSync(path.join(dirs[t], 'manifest.json'), 'utf8'));
+                const src = walk(dirs[t])
+                    .filter(f => f.startsWith('src/') && /\.(jsx|js)$/.test(f))
+                    .map(f => fs.readFileSync(path.join(dirs[t], f), 'utf8')).join('\n');
+                const declared = manifest.permissions.filter(p => ENFORCED.includes(p)).sort();
+                expect(declared).toEqual(usedPermissions(src).sort());
             });
 
             it('registers through registerPlugin from quox-plugin-sdk', () => {

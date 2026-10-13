@@ -34,7 +34,7 @@ Preview with the mocked host. Then confirm for real by building and installing.
 
 ## 5. Extend it
 
-Add `POST /items` to your backend and a form that calls `api('/items', { method: 'POST', body })`, then `getQuox().aee.emit` for the audit.
+Add `POST /items` to your backend and a form that calls `api('/items', { method: 'POST', body })`, then `getQuox().aee.emit` for the audit (add `"aee"` to `permissions` in `manifest.json` first, or the host refuses the call).
 
 ## 6. Ship it
 

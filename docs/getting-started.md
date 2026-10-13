@@ -103,7 +103,7 @@ Rebuild and sign again after every change. See [Signing](./signing.md).
 
 ## 7. Install
 
-Upload the built plugin from the Quox dashboard plugins page, review the permissions, approve. It then appears in the sidebar. Community plugins are labelled unverified unless your org trusts the signing key.
+Upload the built plugin from the Quox dashboard plugins page, review the permissions, approve. Declare exactly the permissions your code uses: the host refuses undeclared calls with `permission_denied` (see [Permissions](./plugin-api.md#permissions)). It then appears in the sidebar. Community plugins are labelled unverified unless your org trusts the signing key.
 
 ## 8. Test
 

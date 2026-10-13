@@ -11,7 +11,25 @@
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const ALLOWED_HEADERS = new Set(['content-type', 'accept']);
 
-function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {} } = {}) {
+// Same map as COMMUNITY_PERMISSION_FOR_METHOD in quox-plugin-sdk (this package is
+// CommonJS and cannot import the ESM sdk, so it is mirrored; a test pins it).
+const PERMISSION_FOR_METHOD = Object.freeze({
+    'storage.get': 'storage',
+    'storage.set': 'storage',
+    'storage.remove': 'storage',
+    'storage.keys': 'storage',
+    'storage.getAll': 'storage',
+    fetch: 'network',
+    'memory.save': 'memory',
+    'memory.search': 'memory',
+    'aee.emit': 'aee',
+    notify: 'notifications',
+});
+
+function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissions } = {}) {
+    // manifest.permissions, fail-closed like the host. `permissions: undefined`
+    // (no manifest passed at all) grants nothing, exactly as a missing field does in prod.
+    const granted = new Set(Array.isArray(permissions) ? permissions : []);
     if (typeof pluginId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(pluginId) || pluginId.includes('..')) {
         throw new Error('invalid_plugin_id');
     }
@@ -106,9 +124,11 @@ function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {} } = {}) {
         async handle(method, args) {
             const h = handlers[method];
             if (!h) throw new Error(`unknown_method:${method}`);
+            const perm = PERMISSION_FOR_METHOD[method];
+            if (perm && !granted.has(perm)) throw new Error(`permission_denied: ${perm}`);
             return h(args || {});
         },
     };
 }
 
-module.exports = { createDevRpc };
+module.exports = { createDevRpc, PERMISSION_FOR_METHOD };

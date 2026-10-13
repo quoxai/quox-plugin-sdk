@@ -5,6 +5,8 @@
  * surface a community plugin gets inside the Quox sandbox frame.
  */
 
+import { COMMUNITY_PERMISSION_FOR_METHOD } from './index.js';
+
 const DEFAULT_USER = { userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' };
 
 function clone(v) {
@@ -19,6 +21,14 @@ function clone(v) {
  * @param {Partial<{userId:string,orgId:string,role:string,tier:string}>} [opts.user]
  * @param {(path: string, options: object) => ({status:number, ok?:boolean, body?:any}|Promise<any>)} [opts.fetch]
  *        handler for window.quox.fetch; defaults to 404.
+ * @param {string[]} [opts.permissions] granted permissions, enforced exactly like the
+ *        host (storage, network, memory, aee, notifications). A refused call rejects
+ *        with Error('permission_denied: <perm>'). Default when neither this nor
+ *        `manifest` is given: ALL granted (convenient for unit tests).
+ * @param {{permissions?: string[]}} [opts.manifest] your manifest.json object; its
+ *        `permissions` are used, fail-closed (absent = nothing granted), as in prod.
+ * @param {boolean} [opts.strictPermissions] with no `permissions`/`manifest`, grant
+ *        nothing instead of everything.
  */
 export function createMockQuox(opts = {}) {
     const pluginId = opts.pluginId || 'test-plugin';
@@ -85,6 +95,24 @@ export function createMockQuox(opts = {}) {
         emitEvent(method, args = []) { if (eventHandler) eventHandler(method, args); },
         uninstall() { uninstallMockQuox(); },
     };
+
+    // Permission gate: same map, same error text as the host mediator.
+    let granted = null; // null = everything granted
+    if (Array.isArray(opts.permissions)) granted = new Set(opts.permissions);
+    else if (opts.manifest) granted = new Set(Array.isArray(opts.manifest.permissions) ? opts.manifest.permissions : []);
+    else if (opts.strictPermissions) granted = new Set();
+    if (granted) {
+        for (const [method, perm] of Object.entries(COMMUNITY_PERMISSION_FOR_METHOD)) {
+            const [head, sub] = method.split('.');
+            const holder = sub ? quox[head] : quox;
+            const key = sub || head;
+            const orig = holder[key];
+            holder[key] = async (...args) => {
+                if (!granted.has(perm)) throw new Error(`permission_denied: ${perm}`);
+                return orig.apply(holder, args);
+            };
+        }
+    }
     return quox;
 }
 

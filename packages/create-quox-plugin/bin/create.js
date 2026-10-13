@@ -66,7 +66,7 @@ function generateManifest(pluginName, displayName, author, description, category
         description,
         category,
         license: 'free',
-        permissions: ['sidebar', 'storage', 'notifications'],
+        permissions: ['sidebar', 'storage', 'notifications', 'network'],
         sidebar: [{ path: `/plugins/${pluginName}`, label: displayName, icon: 'puzzle' }],
         routes: { [`/plugins/${pluginName}`]: 'MainView' },
         minQuoxVersion: '1.0.0',
@@ -107,7 +107,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'service-bridge') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools', 'memory'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             oauthToken: { type: 'password', label: 'OAuth Token', description: 'OAuth access token for the service', default: '' },
@@ -140,7 +140,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'ui-feature') {
-        base.permissions = ['sidebar', 'storage', 'notifications'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             sortOrder: { type: 'select', label: 'Default Sort', description: 'Default sort order for items', default: 'newest', options: ['newest', 'oldest', 'alphabetical'] },
@@ -153,7 +153,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'enterprise-extension') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'memory', 'aee'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'memory'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             endpoint: { type: 'url', label: 'Service Endpoint', description: 'Backend service URL', default: 'http://localhost:8080' },
@@ -181,7 +181,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'specialist-agent') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             scanTarget: { type: 'string', label: 'Default Target', description: 'Default scan target (subnet or host)', default: '192.0.2.0/24' },
@@ -298,7 +298,7 @@ function generateManifest(pluginName, displayName, author, description, category
             const toolDefs = buildMcpToolDefinitions(pluginName, resolvedToolNames);
             const agentLabel = serverName || displayName;
 
-            base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
+            base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools'];
             base.agentDefinition.description = `Specialist agent wired to the "${agentLabel}" MCP server (${mcpTools.length} tool(s) imported).`;
             base.agentDefinition.domain = 'mcp-integration';
             base.agentDefinition.systemPrompt = `You are the ${displayName} specialist agent, generated from the MCP server "${agentLabel}". You have access to ${mcpTools.length} tool(s) imported from that server: explain what each tool does, help the user pick the right one, and summarise results clearly. Live execution of these tools is wired through Quox powers, not this browser plugin.`;
@@ -336,7 +336,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'agentic-team') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             approvalRequired: { type: 'boolean', label: 'Require Approval', description: 'Require approval before team starts a task', default: true },
