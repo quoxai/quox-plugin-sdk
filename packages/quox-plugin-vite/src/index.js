@@ -69,151 +69,33 @@ function rewriteExternalImportsToGlobals(code) {
     }
     return code;
 }
-const DEV_HOST_CLIENT_PATH = path.join(__dirname, 'dev-host', 'client.js');
-const DEV_HOST_CSS_PATH = path.join(PACKAGE_ROOT, 'assets', 'qx-components.css');
-const ENTRY_CANDIDATES = ['src/index.jsx', 'src/index.js', 'src/main.jsx', 'src/main.tsx'];
-// Virtual bootstrap module id. The bootstrap imports react/react-dom/
-// react-router-dom as bare specifiers — ONLY a virtual module resolves those
-// from the plugin project's root (a real /@fs module outside the root
-// resolves them against the SDK repo: 404 or a second React instance). It
-// then hands the deps to the real client.js (served via /@fs, which is fine
-// for its RELATIVE imports) through installDevHost().
-const DEV_HOST_VIRTUAL_ID = 'virtual:quox-dev-host';
-
-const DEV_HOST_ENTRYPOINTS = {
-    css: '/__quox-dev/qx.css',
-    client: `/@id/${DEV_HOST_VIRTUAL_ID}`,
-    manifest: '/__quox-dev/manifest.js',
-};
+const QX_CSS_PATH = path.join(PACKAGE_ROOT, 'assets', 'qx-components.css');
+const { attachDevPreview } = require('./dev-host/server.js');
 
 /**
- * Source of the virtual bootstrap module (dev only). react-router-dom is a
- * host-provided dep that plugins only install if they import it themselves
- * (star-alignment doesn't — it hand-rolls hash routing), so it's imported
- * conditionally; the client falls back to its router shim when null.
- * @param {string} projectRoot
- */
-function devHostBootstrapSource(projectRoot) {
-    let hasRouter = false;
-    try {
-        require.resolve('react-router-dom', { paths: [projectRoot] });
-        hasRouter = true;
-    } catch {
-        // not installed in the plugin project — shim it client-side
-    }
-    return [
-        `import React from 'react';`,
-        `import ReactDOM from 'react-dom/client';`,
-        hasRouter
-            ? `import * as ReactRouterDOM from 'react-router-dom';`
-            : `const ReactRouterDOM = null;`,
-        `import { installDevHost } from ${JSON.stringify(`/@fs${DEV_HOST_CLIENT_PATH}`)};`,
-        `installDevHost({ React, ReactDOM, ReactRouterDOM });`,
-        '',
-    ].join('\n');
-}
-
-/**
- * Detects the plugin's entry module relative to the project root, falling
- * back to the create-quox-plugin convention (src/index.jsx) if none of the
- * known candidates exist yet (e.g. a not-quite-scaffolded project).
- * @param {string} root
- * @returns {string} entry path, always leading with '/'
- */
-function detectEntry(root) {
-    for (const candidate of ENTRY_CANDIDATES) {
-        if (fs.existsSync(path.join(root, candidate))) {
-            return `/${candidate}`;
-        }
-    }
-    return `/${ENTRY_CANDIDATES[0]}`;
-}
-
-/**
- * Reads and parses the project's manifest.json, if present. Never throws —
- * dev host manifest exposure degrades to `{}` rather than crashing the dev
- * server middleware chain.
- * @param {string} root
- * @returns {object}
- */
-function readManifest(root) {
-    try {
-        return JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
-    } catch {
-        return {};
-    }
-}
-
-/**
- * Head markup injected before the plugin entry module — real glass CSS,
- * the parsed manifest as window.__quoxDevManifest, then the dev-host client
- * that installs window.__quoxSharedDeps/__quoxGlass/__quoxPluginApi/
- * __quoxPluginRegister. Order relative to the plugin's own body entry
- * script doesn't need special handling beyond "head before body" — both are
- * `type="module"` so the HTML spec runs them in document order.
- * @returns {string}
- */
-function devHostHeadTags() {
-    return [
-        `    <link rel="stylesheet" href="${DEV_HOST_ENTRYPOINTS.css}">`,
-        `    <script type="module" src="${DEV_HOST_ENTRYPOINTS.manifest}"></script>`,
-        `    <script type="module" src="${DEV_HOST_ENTRYPOINTS.client}"></script>`,
-    ].join('\n');
-}
-
-/**
- * Prepends devHostHeadTags() right after the opening <head> tag. Falls back
- * to prepending at the very start of the document if no <head> tag is found
- * (defensive — real vite index.html templates always have one).
- * @param {string} html
- * @returns {string}
- */
-function injectDevHostHead(html) {
-    const headOpenTag = /<head[^>]*>/i;
-    if (headOpenTag.test(html)) {
-        return html.replace(headOpenTag, (match) => `${match}\n${devHostHeadTags()}`);
-    }
-    return `${devHostHeadTags()}\n${html}`;
-}
-
-/**
- * Full default index.html for scaffolded projects that don't ship their
- * own (the create-quox-plugin templates today have no index.html at all —
- * see plan-sdk-dx.md P1 finding #1). Deliberately BARE — the middleware
- * passes it through server.transformIndexHtml() so every plugin's html hook
- * runs: @vitejs/plugin-react's refresh preamble (JSX modules throw
- * "can't detect preamble" without it) and our own injectDevHostHead.
- * @param {string} entry entry path, e.g. '/src/index.jsx'
- * @returns {string}
- */
-function buildDefaultHtml(entry) {
-    return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>quox-dev-host</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="${entry}"></script>
-  </body>
-</html>
-`;
-}
-
-/**
- * @param {{pluginId: string, devHost?: boolean}} options
+ * @param {{pluginId: string, devHost?: boolean, qxCss?: boolean, devBackendUrl?: string, quoxCoreUrl?: string}} options
+ *   devHost       false disables the sandbox dev preview (plain vite dev server).
+ *   qxCss         false skips bundling the vendored qx-* component css into plugin.css.
+ *   devBackendUrl optional backend that window.quox.fetch is forwarded to in the preview
+ *                 (default: none, fetch answers 404). Also QUOX_DEV_BACKEND_URL.
  * @returns {import('vite').Plugin}
  */
 function quoxPluginVite(options = {}) {
     const { pluginId, quoxCoreUrl } = options;
     const coreUrl = quoxCoreUrl || process.env.QUOX_CORE_URL || 'https://localhost:3000';
     const devHostEnabled = options.devHost !== false;
+    // Community plugins get NO host CSS inside the sandbox frame, so the build
+    // bundles the vendored qx component css into plugin.css unless opted out.
+    const qxCssEnabled = options.qxCss !== false;
+    // Set by the dev preview (dev-host/server.js) around its nested watch build,
+    // which loads the user's config (and so constructs this plugin) inside that
+    // window. Captured at construction because the flag is gone by the time
+    // watch rebuilds fire. Effect: write to a temp dir instead of dist/, keep
+    // lazy chunks inline (the sandbox frame cannot load any URL), skip packaging.
+    const devBuild = globalThis.__quoxDevBuild;
     // Set in configResolved; guards build-only behaviour (externals) so the
     // same plugin instance is safe in `vite` dev and `vite build`.
     let isServe = false;
-    let resolvedRoot = process.cwd();
 
     return {
         name: 'quox-plugin',
@@ -223,7 +105,7 @@ function quoxPluginVite(options = {}) {
             // Vite merges the values RETURNED here over the user's config, so
             // default proxies must yield to routes the plugin project already
             // defines (e.g. star-alignment proxies /api to its own backend on
-            // :3300 — clobbering that 500s every data call in dev).
+            // :3300 - clobbering that 500s every data call in dev).
             const userProxy = (config.server && config.server.proxy) || {};
             const proxy = {};
             if (!userProxy['/collector']) {
@@ -240,47 +122,10 @@ function quoxPluginVite(options = {}) {
                 serverConfig.port = 5174;
             }
 
-            // P1 (SDK-DX): allow the dev server to read outside the plugin
-            // project root so a symlinked/monorepo-linked quox-plugin-vite
-            // package can still be served (dev-host client.js + vendored
-            // qx-components.css both live in this package, not the plugin's).
-            // Setting fs.allow REPLACES Vite's default (the workspace root),
-            // so the plugin project root MUST be re-included explicitly or the
-            // project's own index.html becomes unservable.
-            if (devHostEnabled) {
-                const projectRoot = config.root
-                    ? path.resolve(config.root)
-                    : process.cwd();
-                serverConfig.fs = { allow: [projectRoot, PACKAGE_ROOT] };
-            }
-
-            // P1 (SDK-DX): the dev-host client lives in THIS package (often
-            // symlinked from outside the project), so its bare react/router
-            // imports would otherwise resolve against the SDK repo — a 404 or,
-            // worse, a SECOND React instance that breaks hooks. dedupe forces
-            // resolution to the plugin project's own copies; include makes the
-            // optimizer pre-bundle them (react is CJS and unservable raw).
-            let devResolve = {};
-            if (devHostEnabled && env.command === 'serve') {
-                const rootForResolve = config.root ? path.resolve(config.root) : process.cwd();
-                let hasRouter = false;
-                try {
-                    require.resolve('react-router-dom', { paths: [rootForResolve] });
-                    hasRouter = true;
-                } catch {
-                    // plugin project doesn't ship a router — bootstrap shims it
-                }
-                devResolve = {
-                    resolve: { dedupe: ['react', 'react-dom', ...(hasRouter ? ['react-router-dom'] : [])] },
-                    optimizeDeps: { include: ['react', 'react-dom/client', ...(hasRouter ? ['react-router-dom'] : [])] },
-                };
-            }
-
             return {
-                ...devResolve,
-                // PSDK-7: Dev server config — proxy to live QuoxCORE
+                // PSDK-7: Dev server config - proxy to live QuoxCORE
                 server: serverConfig,
-                // Plugins ship straight to the browser — there is no downstream
+                // Plugins ship straight to the browser - there is no downstream
                 // bundler to substitute process.env.NODE_ENV (lib mode leaves it
                 // in), and `process` doesn't exist in the page. Pin it at build
                 // time or any dependency with a dev/prod switch (react/jsx-runtime)
@@ -290,7 +135,7 @@ function quoxPluginVite(options = {}) {
                     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
                 } : {}),
                 build: {
-                    // NOTE: intentionally NOT using `build.lib` — lib mode with a
+                    // NOTE: intentionally NOT using `build.lib` - lib mode with a
                     // single entry forces `inlineDynamicImports:true`, collapsing
                     // every dynamic import() back into plugin.esm.js. To let a
                     // plugin code-split heavy views into lazily-loaded chunks
@@ -306,7 +151,7 @@ function quoxPluginVite(options = {}) {
                             entryFileNames: 'plugin.esm.js',
                             chunkFileNames: 'assets/[name]-[hash].js',
                             assetFileNames: 'plugin.[ext]',
-                            inlineDynamicImports: false,
+                            inlineDynamicImports: !!devBuild,
                             globals: {
                                 react: 'window.__quoxSharedDeps.React',
                                 'react-dom': 'window.__quoxSharedDeps.ReactDOM',
@@ -317,112 +162,67 @@ function quoxPluginVite(options = {}) {
                         },
                     },
                     cssCodeSplit: false,
-                    outDir: 'dist',
+                    outDir: devBuild ? devBuild.outDir : 'dist',
                     emptyOutDir: true,
                 },
             };
         },
 
-        // Rewrite bare React imports to use shared deps
-        configResolved(resolvedConfig) {
-            isServe = resolvedConfig.command === 'serve';
-            resolvedRoot = resolvedConfig.root || process.cwd();
+        // Bundle the vendored qx-* component css (and its tokens) in front of the
+        // plugin's own css. order:'post' so Vite's css plugin has already emitted
+        // plugin.css into the bundle.
+        generateBundle: {
+            order: 'post',
+            handler(_outputOptions, bundle) {
+                if (isServe || !qxCssEnabled) return;
+                const qx = fs.readFileSync(QX_CSS_PATH, 'utf8');
+                const existing = bundle['plugin.css'];
+                if (existing && existing.type === 'asset') {
+                    existing.source = `${qx}\n${String(existing.source)}`;
+                } else if (!existing) {
+                    this.emitFile({ type: 'asset', fileName: 'plugin.css', source: qx });
+                }
+            },
         },
 
-        // Rollup's output.globals is IGNORED for format:'es' — it only applies
+        configResolved(resolvedConfig) {
+            isServe = resolvedConfig.command === 'serve';
+        },
+
+        // Rollup's output.globals is IGNORED for format:'es' - it only applies
         // to iife/umd. Left alone, the emitted plugin.esm.js keeps bare
-        // `import ... from "react"` statements, which the dashboard host's
-        // blob-URL <script type="module"> cannot resolve (no import map), so
-        // activation fails with "Failed to resolve module specifier".
-        // Rewrite external imports into reads of the host-provided globals.
+        // `import ... from "react"` statements, which the dashboard host cannot
+        // resolve (no import map), so activation fails with "Failed to resolve
+        // module specifier". Rewrite external imports into reads of the
+        // host-provided globals.
         renderChunk(code) {
             if (isServe) return null;
             return { code: rewriteExternalImportsToGlobals(code), map: null };
         },
 
-        // Externalise the host-shared deps at BUILD time only. In dev the
-        // plugin (and the dev-host client) must resolve react etc. from the
-        // project's node_modules — marking them external in serve mode makes
-        // Vite emit unservable /@id/react URLs and blanks the whole page.
+        // Externalise the host-shared deps at BUILD time only. (In `vite` dev the
+        // plugin is built by a nested watch build, see dev-host/server.js; the dev
+        // server itself never serves plugin modules.)
         resolveId(source) {
-            if (isServe) {
-                // Dev: resolve only our virtual bootstrap; leave react etc.
-                // to Vite so they come from the project's node_modules.
-                if (devHostEnabled && source === DEV_HOST_VIRTUAL_ID) {
-                    return DEV_HOST_VIRTUAL_ID;
-                }
-                return null;
-            }
+            if (isServe) return null;
             if (Object.prototype.hasOwnProperty.call(EXTERNAL_GLOBALS, source)) {
                 return { id: source, external: true };
             }
             return null;
         },
 
-        load(id) {
-            if (isServe && devHostEnabled && id === DEV_HOST_VIRTUAL_ID) {
-                return devHostBootstrapSource(resolvedRoot);
-            }
-            return null;
-        },
-
-        // P1 (SDK-DX): dev host harness — serves the vendored glass CSS,
-        // dev-host client, and parsed manifest under /__quox-dev/*, plus a
-        // default index.html for projects that don't ship their own
-        // (create-quox-plugin scaffolds currently have none). Only wired
-        // when `devHost !== false`; Vite only calls this hook in serve mode.
+        // Dev preview: a faithful simulation of the community-plugin SANDBOX
+        // (opaque-origin iframe, same CSP, throwing stubs, postMessage RPC with
+        // an in-memory window.quox mock), NOT the dashboard. Vite only calls
+        // this hook in serve mode.
         configureServer(server) {
             if (!devHostEnabled) return;
-
-            const root = server.config.root;
-
-            server.middlewares.use(DEV_HOST_ENTRYPOINTS.css, (req, res) => {
-                res.setHeader('Content-Type', 'text/css');
-                res.end(fs.readFileSync(DEV_HOST_CSS_PATH, 'utf8'));
-            });
-
-            server.middlewares.use(DEV_HOST_ENTRYPOINTS.manifest, (req, res) => {
-                res.setHeader('Content-Type', 'application/javascript');
-                res.end(`window.__quoxDevManifest = ${JSON.stringify(readManifest(root))};\n`);
-            });
-
-            // Default index.html — only fires for '/' and '/index.html' AND
-            // only when the project has no index.html of its own (star-
-            // alignment style projects keep their real one; Vite serves
-            // that natively and runs it through transformIndexHtml below).
-            // MUST go through server.transformIndexHtml so every plugin's
-            // html hook runs — @vitejs/plugin-react's refresh preamble in
-            // particular, without which every JSX module throws.
-            server.middlewares.use((req, res, next) => {
-                const url = (req.url || '').split('?')[0];
-                if (url !== '/' && url !== '/index.html') {
-                    next();
-                    return;
-                }
-                if (fs.existsSync(path.join(root, 'index.html'))) {
-                    next();
-                    return;
-                }
-                server.transformIndexHtml(req.originalUrl || req.url || '/', buildDefaultHtml(detectEntry(root)))
-                    .then((html) => {
-                        res.setHeader('Content-Type', 'text/html');
-                        res.end(html);
-                    })
-                    .catch(next);
-            });
+            attachDevPreview(server, { pluginId, devBackendUrl: options.devBackendUrl, user: options.devUser });
         },
 
-        // P1 (SDK-DX): head-prepend the dev-host asset tags into any
-        // index.html Vite processes — both project-shipped ones (star-
-        // alignment) and the generated default (the middleware above pipes
-        // it through server.transformIndexHtml, which lands here too).
-        transformIndexHtml(html) {
-            if (!devHostEnabled) return html;
-            return injectDevHostHead(html);
-        },
-
-        // After build, package into .quoxplugin ZIP
+                // After build, package into .quoxplugin ZIP
         async closeBundle() {
+            if (devBuild) return; // preview build: no packaging
             const distDir = path.resolve('dist');
             const manifestPath = path.resolve('manifest.json');
 
@@ -484,13 +284,7 @@ function quoxPluginVite(options = {}) {
 module.exports = quoxPluginVite;
 module.exports.default = quoxPluginVite;
 
-// Exposed for unit testing (P1 SDK-DX dev host — pure helpers).
+// Exposed for unit testing.
 module.exports.__testables = {
-    detectEntry,
-    readManifest,
-    devHostHeadTags,
-    injectDevHostHead,
-    buildDefaultHtml,
     rewriteExternalImportsToGlobals,
-    DEV_HOST_ENTRYPOINTS,
 };

@@ -1,273 +1,145 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { describe, it, expect, afterEach } from 'vitest';
+import http from 'http';
 
 const quoxPluginVite = require('../index.js');
-const { detectEntry, buildDefaultHtml, injectDevHostHead, DEV_HOST_ENTRYPOINTS } = quoxPluginVite.__testables;
+const { FRAME_SANDBOX, FRAME_CSP, buildFrameSrcdoc } = require('../dev-host/frame.js');
+const { frameDepsEntry, escapeForInlineScript } = require('../dev-host/frame-deps.js');
+const { createPreviewRouter } = require('../dev-host/server.js');
+const { createDevRpc } = require('../dev-host/rpc.js');
 
-/** Minimal connect-style middleware stack mock, mirroring Vite's server.middlewares. */
-function createMockServer(root, htmlTransformPlugin) {
-    const uses = [];
-    return {
-        config: { root },
-        middlewares: {
-            use(pathOrFn, handler) {
-                uses.push(handler ? [pathOrFn, handler] : [null, pathOrFn]);
-            },
-        },
-        // Mirrors ViteDevServer.transformIndexHtml: runs the given plugin's
-        // transformIndexHtml hook (the real server runs ALL plugins' hooks —
-        // ours is the one under test here).
-        async transformIndexHtml(url, html) {
-            if (htmlTransformPlugin && typeof htmlTransformPlugin.transformIndexHtml === 'function') {
-                return htmlTransformPlugin.transformIndexHtml(html);
-            }
-            return html;
-        },
-        __uses: uses,
-        findHandler(routePath) {
-            const entry = uses.find(([p]) => p === routePath);
-            return entry ? entry[1] : undefined;
-        },
-        catchAllHandlers() {
-            return uses.filter(([p]) => p === null).map(([, h]) => h);
-        },
-    };
-}
-
-function mockRes() {
-    return {
-        headers: {},
-        body: undefined,
-        setHeader(name, value) { this.headers[name] = value; },
-        end(body) { this.body = body; },
-    };
-}
-
-describe('quox-plugin-vite dev host (P1 SDK-DX)', () => {
-    let tmpRoot;
-
-    beforeEach(() => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quox-dev-host-test-'));
+describe('sandbox parity with the QuoxCORE host', () => {
+    it('uses the host sandbox tokens and CSP verbatim', () => {
+        // Pinned from quox-dashboard src/services/pluginFrameHost.js @ 17684609a4fb
+        expect(FRAME_SANDBOX).toBe('allow-scripts');
+        expect(FRAME_CSP).toBe([
+            "default-src 'none'", "script-src 'unsafe-inline'", "style-src 'unsafe-inline'",
+            'img-src data: blob:', 'font-src data:', "connect-src 'none'", "form-action 'none'", "base-uri 'none'",
+        ].join('; '));
+        expect(FRAME_SANDBOX).not.toContain('allow-same-origin');
     });
 
-    afterEach(() => {
-        fs.rmSync(tmpRoot, { recursive: true, force: true });
+    it('frame document carries the CSP meta, plugin css, deps, shim and the bundle in order', () => {
+        const html = buildFrameSrcdoc({ pluginId: 'my-plugin', channel: 'c'.repeat(32), bundleCode: 'BUNDLE();', cssCode: '.x{}', frameDepsCode: 'DEPS();' });
+        expect(html).toContain(`<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">`);
+        expect(html).toContain('<style data-plugin-css="my-plugin">.x{}</style>');
+        const iDeps = html.indexOf('<script>DEPS();</script>');
+        const iShim = html.indexOf('window.__quoxPluginRegister');
+        const iBundle = html.indexOf('<script type="module">BUNDLE();</script>');
+        expect(iDeps).toBeGreaterThan(-1);
+        expect(iDeps).toBeLessThan(iShim);
+        expect(iShim).toBeLessThan(iBundle);
+        expect(html).toContain('window.quox = api');
     });
 
-    // (a) dev options gating ------------------------------------------------
-    describe('devHost option gating', () => {
-        it('devHost defaults to enabled (undefined !== false)', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const html = plugin.transformIndexHtml('<html><head></head><body></body></html>');
-            expect(html).toContain(DEV_HOST_ENTRYPOINTS.client);
-        });
-
-        it('transformIndexHtml is a no-op when devHost:false', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p', devHost: false });
-            const html = '<html><head></head><body></body></html>';
-            expect(plugin.transformIndexHtml(html)).toBe(html);
-        });
-
-        it('configureServer registers no middleware when devHost:false', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p', devHost: false });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-            expect(server.__uses.length).toBe(0);
-        });
-
-        it('config() only adds server.fs.allow when devHost is enabled', () => {
-            const enabled = quoxPluginVite({ pluginId: 'p' }).config({});
-            const disabled = quoxPluginVite({ pluginId: 'p', devHost: false }).config({});
-            expect(enabled.server.fs).toBeDefined();
-            expect(enabled.server.fs.allow.length).toBeGreaterThan(0);
-            expect(disabled.server.fs).toBeUndefined();
-        });
-
-        it('does not change build mode config (rollupOptions untouched) regardless of devHost', () => {
-            const withDevHost = quoxPluginVite({ pluginId: 'p' }).config({});
-            const withoutDevHost = quoxPluginVite({ pluginId: 'p', devHost: false }).config({});
-            expect(withDevHost.build).toEqual(withoutDevHost.build);
-            expect(withDevHost.build.rollupOptions.input).toBe('src/index.jsx');
-            expect(withDevHost.build.rollupOptions.output.entryFileNames).toBe('plugin.esm.js');
-        });
+    it('frame deps: only React family is real, the rest throw, glass is a stub', () => {
+        const src = frameDepsEntry({ hasRouter: true });
+        for (const stub of ['CapabilityPanels', 'WorkspaceContext', 'AuthContext', 'LicenseValidator', 'ServerSyncQueue', 'OrgScopedStorage']) {
+            expect(src).toContain(`${stub}: hostOnlyStub('${stub}')`);
+        }
+        expect(src).toContain("window.__quoxGlass = hostOnlyStub('@quox/glass')");
+        expect(src).toContain('is not available in isolated plugins; use window.quox RPC instead');
+        expect(frameDepsEntry({ hasRouter: false })).toContain('const ReactRouterDOM = {};');
     });
 
-    // (b) transformIndexHtml injection order --------------------------------
-    describe('transformIndexHtml head-prepend injection', () => {
-        it('injects link + manifest script + client script right after <head>, in that order', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const raw = '<!doctype html>\n<html><head><title>Star Alignment</title></head><body><div id="root"></div><script type="module" src="/src/index.jsx"></script></body></html>';
-            const out = plugin.transformIndexHtml(raw);
-
-            const linkIdx = out.indexOf(DEV_HOST_ENTRYPOINTS.css);
-            const manifestIdx = out.indexOf(DEV_HOST_ENTRYPOINTS.manifest);
-            const clientIdx = out.indexOf(DEV_HOST_ENTRYPOINTS.client);
-            const bodyEntryIdx = out.indexOf('/src/index.jsx');
-
-            expect(linkIdx).toBeGreaterThan(-1);
-            expect(manifestIdx).toBeGreaterThan(-1);
-            expect(clientIdx).toBeGreaterThan(-1);
-            expect(linkIdx).toBeLessThan(manifestIdx);
-            expect(manifestIdx).toBeLessThan(clientIdx);
-            expect(clientIdx).toBeLessThan(bodyEntryIdx);
-        });
-
-        it('preserves the original head and body content', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const raw = '<html><head><title>Star Alignment</title></head><body><script type="module" src="/src/index.jsx"></script></body></html>';
-            const out = plugin.transformIndexHtml(raw);
-            expect(out).toContain('<title>Star Alignment</title>');
-            expect(out).toContain('<script type="module" src="/src/index.jsx"></script>');
-        });
-
-        it('falls back to prepending when there is no <head> tag', () => {
-            const html = injectDevHostHead('<body>no head here</body>');
-            expect(html.indexOf(DEV_HOST_ENTRYPOINTS.client)).toBeGreaterThan(-1);
-            expect(html.indexOf(DEV_HOST_ENTRYPOINTS.client)).toBeLessThan(html.indexOf('no head here'));
-        });
+    it('stubs throw when used (evaluate the entry body without React)', () => {
+        const body = frameDepsEntry({ hasRouter: false })
+            .split('\n').filter((l) => !/^import /.test(l)).join('\n')
+            .replace('const ReactDOM = Object.assign({}, ReactDOMBase, ReactDOMClient);', 'const ReactDOM = {};');
+        const win = {};
+        // eslint-disable-next-line no-new-func
+        new Function('window', 'React', 'ReactJSXRuntime', body)(win, {}, {});
+        expect(() => win.__quoxGlass.GlassPanel()).toThrow(/not available in isolated plugins/);
+        expect(() => win.__quoxSharedDeps.AuthContext.Provider()).toThrow(/AuthContext is not available/);
+        expect(win.__quoxGlass.then).toBeUndefined();
+        expect(win.__quoxSharedDeps.React).toBeDefined();
     });
 
-    // (c) default-html middleware --------------------------------------------
-    describe('default index.html middleware', () => {
-        it('fires for "/" when the project root has no index.html', async () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot, plugin);
-            plugin.configureServer(server);
+    it('escapeForInlineScript stops a bundle terminating its script element', () => {
+        expect(escapeForInlineScript('a</script><b>')).toBe('a<\\/script><b>');
+    });
+});
 
-            const handler = server.catchAllHandlers()[0];
-            const req = { url: '/' };
-            const res = mockRes();
-            let nextCalled = false;
-            // The middleware responds asynchronously (it awaits
-            // server.transformIndexHtml so the react-refresh preamble and the
-            // dev-host head tags are both injected) — wait for res.end.
-            await new Promise((resolve, reject) => {
-                res.end = (body) => { res.body = body; resolve(); };
-                handler(req, res, (err) => { nextCalled = true; err ? reject(err) : resolve(); });
-            });
-
-            expect(nextCalled).toBe(false);
-            expect(res.headers['Content-Type']).toBe('text/html');
-            expect(res.body).toContain('<div id="root"></div>');
-            expect(res.body).toContain(DEV_HOST_ENTRYPOINTS.client);
-        });
-
-        it('calls next() and does not respond when the project already has an index.html', () => {
-            fs.writeFileSync(path.join(tmpRoot, 'index.html'), '<html><body>real</body></html>');
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-
-            const handler = server.catchAllHandlers()[0];
-            const req = { url: '/' };
-            const res = mockRes();
-            let nextCalled = false;
-            handler(req, res, () => { nextCalled = true; });
-
-            expect(nextCalled).toBe(true);
-            expect(res.body).toBeUndefined();
-        });
-
-        it('calls next() for unrelated URLs', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-
-            const handler = server.catchAllHandlers()[0];
-            const req = { url: '/src/index.jsx' };
-            const res = mockRes();
-            let nextCalled = false;
-            handler(req, res, () => { nextCalled = true; });
-
-            expect(nextCalled).toBe(true);
-            expect(res.body).toBeUndefined();
-        });
-
-        it('embeds the detected entry script (src/index.jsx present)', () => {
-            fs.mkdirSync(path.join(tmpRoot, 'src'), { recursive: true });
-            fs.writeFileSync(path.join(tmpRoot, 'src', 'index.jsx'), '// entry');
-            const entry = detectEntry(tmpRoot);
-            expect(entry).toBe('/src/index.jsx');
-            expect(buildDefaultHtml(entry)).toContain('<script type="module" src="/src/index.jsx"></script>');
-        });
-
-        it('falls back to /src/index.jsx when no known entry candidate exists on disk', () => {
-            expect(detectEntry(tmpRoot)).toBe('/src/index.jsx');
-        });
+describe('plugin wiring', () => {
+    it('no dev middleware when devHost:false', () => {
+        const uses = [];
+        quoxPluginVite({ pluginId: 'p', devHost: false }).configureServer({ middlewares: { use: (...a) => uses.push(a) }, config: { root: '/nonexistent' } });
+        expect(uses).toHaveLength(0);
     });
 
-    // (d) manifest exposure ---------------------------------------------------
-    describe('manifest exposure', () => {
-        it('serves window.__quoxDevManifest with the parsed manifest.json', () => {
-            fs.writeFileSync(path.join(tmpRoot, 'manifest.json'), JSON.stringify({ id: 'star-alignment', name: 'Star Alignment' }));
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-
-            const handler = server.findHandler(DEV_HOST_ENTRYPOINTS.manifest);
-            const res = mockRes();
-            handler({}, res);
-
-            expect(res.headers['Content-Type']).toBe('application/javascript');
-            expect(res.body).toContain('window.__quoxDevManifest');
-            expect(res.body).toContain('"star-alignment"');
-        });
-
-        it('degrades to an empty object when manifest.json is missing', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-
-            const handler = server.findHandler(DEV_HOST_ENTRYPOINTS.manifest);
-            const res = mockRes();
-            handler({}, res);
-
-            expect(res.body).toBe('window.__quoxDevManifest = {};\n');
-        });
+    it('build config is identical with or without devHost, and writes dist/ by default', () => {
+        const a = quoxPluginVite({ pluginId: 'p' }).config({}, { command: 'build' });
+        const b = quoxPluginVite({ pluginId: 'p', devHost: false }).config({}, { command: 'build' });
+        expect(a.build).toEqual(b.build);
+        expect(a.build.outDir).toBe('dist');
+        expect(a.build.rollupOptions.output.inlineDynamicImports).toBe(false);
     });
 
-    // Asset-serving middlewares -----------------------------------------------
-    describe('/__quox-dev/* asset middlewares', () => {
-        it('serves vendored qx-components.css with correct content-type', () => {
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
+    it('the nested preview build redirects output away from dist/', () => {
+        globalThis.__quoxDevBuild = { outDir: '/tmp/x-preview' };
+        try {
+            const c = quoxPluginVite({ pluginId: 'p' }).config({}, { command: 'build' });
+            expect(c.build.outDir).toBe('/tmp/x-preview');
+            expect(c.build.rollupOptions.output.inlineDynamicImports).toBe(true);
+        } finally { delete globalThis.__quoxDevBuild; }
+    });
+});
 
-            const handler = server.findHandler(DEV_HOST_ENTRYPOINTS.css);
-            const res = mockRes();
-            handler({}, res);
+describe('preview router', () => {
+    let srv;
+    afterEach(() => new Promise((r) => (srv ? srv.close(r) : r())));
 
-            expect(res.headers['Content-Type']).toBe('text/css');
-            expect(res.body).toContain('VENDORED FILE');
-            expect(res.body).toContain('.qx-pill');
+    async function boot(overrides = {}) {
+        const rpc = createDevRpc({ pluginId: 'my-plugin' });
+        const frames = [];
+        const router = createPreviewRouter({
+            getMeta: () => ({ pluginId: 'my-plugin', name: 'My Plugin' }),
+            rpc,
+            buildFrame: async (ch) => { frames.push(ch); if (overrides.fail) throw new Error('boom'); return `<html>frame ${ch}</html>`; },
+            addEventClient: () => {},
         });
+        srv = http.createServer((req, res) => router(req, res, () => { res.statusCode = 418; res.end('next'); }));
+        await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+        const base = `http://127.0.0.1:${srv.address().port}`;
+        return { base, frames };
+    }
 
-        it('exposes the dev-host client via the virtual bootstrap module (Vite pipeline, NOT raw middleware)', () => {
-            // Bare react/react-router-dom imports only resolve from the plugin
-            // project's root when the importer is a VIRTUAL module; the real
-            // client.js (outside the root) receives the deps via
-            // installDevHost() instead of importing them itself.
-            expect(DEV_HOST_ENTRYPOINTS.client).toBe('/@id/virtual:quox-dev-host');
+    it('serves the parent page that creates a sandboxed iframe', async () => {
+        const { base } = await boot();
+        const html = await (await fetch(`${base}/`)).text();
+        expect(html).toContain('My Plugin');
+        expect(html).toContain('/__quox-dev/parent.js');
+        const js = await (await fetch(`${base}/__quox-dev/parent.js`)).text();
+        expect(js).toContain("setAttribute('sandbox', 'allow-scripts')");
+        expect(js).not.toMatch(/allow-same-origin['"]/);
+    });
 
-            const plugin = quoxPluginVite({ pluginId: 'p' });
-            plugin.configResolved({ command: 'serve' });
-            expect(plugin.resolveId('virtual:quox-dev-host')).toBe('virtual:quox-dev-host');
-            const bootstrap = plugin.load('virtual:quox-dev-host');
-            expect(bootstrap).toContain("import React from 'react'");
-            expect(bootstrap).toContain('installDevHost({ React, ReactDOM, ReactRouterDOM })');
-            expect(bootstrap).toContain('/@fs');
+    it('serves the frame for a valid channel only', async () => {
+        const { base } = await boot();
+        const ch = 'a'.repeat(32);
+        expect(await (await fetch(`${base}/__quox-dev/frame?channel=${ch}`)).text()).toContain(`frame ${ch}`);
+        expect((await fetch(`${base}/__quox-dev/frame?channel=bad`)).status).toBe(400);
+    });
 
-            // Build mode must NOT leak the virtual module or lose externals.
-            const buildPlugin = quoxPluginVite({ pluginId: 'p' });
-            buildPlugin.configResolved({ command: 'build' });
-            expect(buildPlugin.load('virtual:quox-dev-host')).toBeNull();
-            expect(buildPlugin.resolveId('react')).toEqual({ id: 'react', external: true });
+    it('reports a failed build as 503 json', async () => {
+        const { base } = await boot({ fail: true });
+        const r = await fetch(`${base}/__quox-dev/frame?channel=${'b'.repeat(32)}`);
+        expect(r.status).toBe(503);
+        expect((await r.json()).error).toBe('boom');
+    });
 
-            const server = createMockServer(tmpRoot);
-            plugin.configureServer(server);
-            expect(server.findHandler(DEV_HOST_ENTRYPOINTS.client)).toBeUndefined();
-        });
+    it('answers rpc through the mock and refuses cross-origin posts', async () => {
+        const { base } = await boot();
+        const post = (body, headers = {}) => fetch(`${base}/__quox-dev/rpc`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+        expect(await (await post({ method: 'getUser', args: {} })).json()).toEqual({ ok: true, value: { userId: 'dev-user', orgId: 'dev-org', role: 'admin', tier: 'pro' } });
+        const fr = await (await post({ method: 'fetch', args: { path: '/x' } })).json();
+        expect(fr.value.status).toBe(404);
+        expect(await (await post({ method: 'nope' })).json()).toEqual({ ok: false, error: 'unknown_method:nope' });
+        const cross = await post({ method: 'getUser' }, { Origin: 'https://evil.example' });
+        expect(cross.status).toBe(403);
+    });
+
+    it('passes unrelated urls to next()', async () => {
+        const { base } = await boot();
+        expect((await fetch(`${base}/src/main.js`)).status).toBe(418);
     });
 });

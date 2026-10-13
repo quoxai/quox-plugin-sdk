@@ -1,70 +1,96 @@
 # Plugin Signing & Licensing
 
-## Signing
+## Signing community plugins
 
-Plugin signing uses Ed25519 digital signatures to verify authenticity and integrity. Signed plugins show a "Signed" badge in the QuoxCORE plugin manager. Unsigned plugins show a warning.
+Community (third-party) plugins run in a sandboxed frame. An org admin decides which
+authors are trusted by registering their Ed25519 public key. Once an org has at least one
+trusted key, QuoxCORE accepts only bundles carrying a valid signature from one of them.
+An org with no trusted keys accepts unsigned installs.
 
-### Generate a Signing Key Pair
+`quox-plugin-vite` ships a `quox-plugin` CLI that produces exactly the signature the host
+verifies. No extra scripts are needed.
 
-Run this once:
-
-```bash
-node scripts/generate-signing-key.js
-```
-
-This produces:
-- `quox-signing.key` — Private key (keep secret, never commit)
-- `quox-signing.pub` — Public key (PEM format)
-- Console output: Base64 public key for embedding
-
-**Add `quox-signing.key` to your `.gitignore` immediately.**
-
-### Sign a Plugin
-
-After building your `.quoxplugin`:
+### 1. Generate a key pair (once)
 
 ```bash
-node scripts/sign-plugin.js \
-  --plugin ./my-plugin.quoxplugin \
-  --key ./quox-signing.key
+npx quox-plugin keygen --out ./.keys
 ```
 
-This:
-1. Opens the ZIP
-2. Reads `manifest.json`
-3. Computes a SHA-256 digest of the canonical (sorted, signature-stripped) manifest
-4. Signs the digest with your Ed25519 private key
-5. Writes `signature.json` into the ZIP
+This writes:
 
-### Signature Format
+- `.keys/plugin-signing.pem`: the private key (mode 0600). Keep it secret. Never commit it.
+  New projects ignore `.keys/` in git; add it to `.gitignore` if yours does not.
+- `.keys/plugin-signing.pub`: the public key as 64 hex characters.
 
-The `signature.json` file contains:
+It refuses to overwrite an existing key unless you pass `--force`.
+
+### 2. Build, validate, sign
+
+```bash
+npm run build
+npx quox-plugin validate
+npx quox-plugin sign --key ./.keys/plugin-signing.pem
+```
+
+`sign` writes `dist/signature.json`. Re-sign after every build: the signature is bound to
+the exact bytes of `dist/plugin.esm.js`.
 
 ```json
 {
-    "keyId": "base64-encoded-public-key",
-    "digest": "base64-encoded-sha256-digest",
-    "signature": "base64-encoded-ed25519-signature",
-    "algorithm": "Ed25519",
-    "hashAlgorithm": "SHA-256",
-    "timestamp": "2026-03-20T12:00:00.000Z",
-    "pluginId": "my-plugin",
-    "pluginVersion": "1.0.0"
+  "algorithm": "Ed25519",
+  "digest": "<sha256 hex of dist/plugin.esm.js>",
+  "signature": "<hex Ed25519 signature over the 32 digest bytes>",
+  "public_key_hex": "<64 hex chars, the raw public key>",
+  "plugin_id": "my-plugin",
+  "plugin_version": "1.0.0",
+  "signed_at": "2026-10-13T12:00:00.000Z"
 }
 ```
 
-### Verification in QuoxCORE
+The host reads `algorithm`, `digest`, `signature` and `public_key_hex`; the other fields are
+informational. Only `plugin.esm.js` is covered by the signature, so keep `plugin.css` and
+`manifest.json` under your normal release controls.
 
-When a user uploads a signed plugin:
-1. QuoxCORE extracts `signature.json`
-2. Checks the signing key is trusted
-3. Recomputes the manifest digest
-4. Verifies the Ed25519 signature
-5. Shows "Signed" or "Invalid Signature" accordingly
+### 3. The org admin trusts your public key
 
-### Distributing Your Public Key
+Send the admin the contents of `.keys/plugin-signing.pub` (it is public). They run:
 
-For your plugins to verify as "Signed", the QuoxCORE instance must trust your public key. Currently this requires the QuoxCORE admin to add your key. Phase 2 (marketplace) will automate this.
+```bash
+quox plugin trusted-keys add --label "Acme plugin signing" --public-key <64-hex-public-key>
+quox plugin trusted-keys list
+```
+
+To revoke a key: `quox plugin trusted-keys remove <keyId>`. Removing the LAST trusted key
+reopens the org to unsigned bundles, so the CLI requires `--confirm-unsigned` for that case.
+
+### 4. Install
+
+```bash
+quox plugin install \
+  --manifest manifest.json \
+  --bundle dist/plugin.esm.js \
+  --css dist/plugin.css \
+  --signature dist/signature.json
+```
+
+The same `--signature dist/signature.json` is required for `quox plugin update` when the
+org has trusted keys.
+
+### Failure reasons
+
+| Host reason | Meaning |
+|-------------|---------|
+| `unsigned` | no `--signature` was sent |
+| `invalid_structure` | `signature.json` is missing `algorithm`, `digest`, `signature` or `public_key_hex`, or algorithm is not `Ed25519` |
+| `digest_mismatch` | `dist/plugin.esm.js` changed after signing: rebuild, then sign again |
+| `no_matching_key` | the org has not trusted this public key (step 3) |
+| `bad_signature` | the signature does not verify against the digest |
+
+### Official plugins are different
+
+Quox first-party plugins are signed with a manifest digest and an `integrity` block by Quox's
+own release tooling and run in the dashboard rather than the sandbox. That path is not
+available to community authors and `quox-plugin sign` does not produce it.
 
 ## Per-Plugin Licensing
 
