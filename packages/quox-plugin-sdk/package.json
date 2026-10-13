@@ -1,21 +1,37 @@
 {
   "name": "quox-plugin-sdk",
-  "version": "0.1.0",
-  "description": "Core types, runtime helpers, and testing utilities for QuoxCORE plugins",
-  "main": "src/index.js",
-  "types": "src/types.d.ts",
+  "version": "0.2.0",
+  "description": "Runtime helpers, types and testing mocks for Quox community plugins (the sandboxed window.quox API)",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./testing": "./src/testing.js",
+    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+    "./testing": { "types": "./src/testing.d.ts", "default": "./src/testing.js" },
     "./aware": { "types": "./src/aware.d.ts", "default": "./src/aware.js" },
-    "./types": "./src/types.d.ts"
+    "./types": "./src/types.d.ts",
+    "./package.json": "./package.json"
   },
-  "files": ["src"],
-  "keywords": ["quox", "plugin", "sdk"],
+  "files": [
+    "src/index.js",
+    "src/index.d.ts",
+    "src/testing.js",
+    "src/testing.d.ts",
+    "src/aware.js",
+    "src/aware.d.ts",
+    "src/types.d.ts",
+    "LICENSE"
+  ],
+  "keywords": ["quox", "plugin", "sdk", "sandbox", "quoxcore"],
+  "author": "Quox",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/quoxai/quox-plugin-sdk.git",
     "directory": "packages/quox-plugin-sdk"
   },
-  "license": "MIT"
+  "homepage": "https://quox.ai/docs/plugin-sdk",
+  "bugs": { "url": "https://github.com/quoxai/quox-plugin-sdk/issues" },
+  "engines": { "node": ">=20" },
+  "publishConfig": { "access": "public" }
 }
