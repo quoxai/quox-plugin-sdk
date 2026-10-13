@@ -1,175 +1,125 @@
-/**
- * @vitest-environment jsdom
- */
 import { describe, it, expect, afterEach } from 'vitest';
-import { createMockPluginApi } from '../testing.js';
+import {
+    createMockQuox, installMockQuox, uninstallMockQuox,
+    createMockPluginApi, setupPluginTestEnv, teardownPluginTestEnv, setupGlassMocks,
+} from '../testing.js';
+import { getQuox } from '../index.js';
 
-describe('testing utilities', () => {
-    describe('createMockPluginApi', () => {
-        it('creates a mock API with default plugin ID', () => {
-            const api = createMockPluginApi();
-            expect(api.pluginId).toBe('test-plugin');
-        });
-
-        it('creates a mock API with custom plugin ID', () => {
-            const api = createMockPluginApi('my-plugin');
-            expect(api.pluginId).toBe('my-plugin');
-        });
-
-        it('cache get/set/remove/keys work correctly (PD-6)', () => {
-            const api = createMockPluginApi();
-
-            expect(api.cache.get('missing')).toBeNull();
-            expect(api.cache.keys()).toEqual([]);
-
-            api.cache.set('a', 1);
-            api.cache.set('b', { x: 2 });
-
-            expect(api.cache.get('a')).toBe(1);
-            expect(api.cache.get('b')).toEqual({ x: 2 });
-            expect(api.cache.keys().sort()).toEqual(['a', 'b']);
-
-            api.cache.remove('a');
-            expect(api.cache.get('a')).toBeNull();
-        });
-
-        it('storage is a deprecated alias of cache (PD-6)', () => {
-            const api = createMockPluginApi();
-            api.cache.set('shared', 'via-cache');
-            expect(api.storage.get('shared')).toBe('via-cache');
-            api.storage.set('via-storage', 42);
-            expect(api.cache.get('via-storage')).toBe(42);
-        });
-
-        it('durable get/set/remove/keys round-trip with org and user scopes (PD-3)', async () => {
-            const api = createMockPluginApi();
-
-            await api.durable.set('k1', { count: 5 });
-            await api.durable.set('k2', 'two');
-            expect(await api.durable.get('k1')).toEqual({ count: 5 });
-            expect(await api.durable.keys()).toEqual(['k1', 'k2']);
-
-            await api.durable.set('pref', 'X-pref', { scope: 'user' });
-            expect(await api.durable.get('pref', { scope: 'user' })).toBe('X-pref');
-            expect(await api.durable.get('pref')).toBeNull();
-
-            await api.durable.remove('k1');
-            expect(await api.durable.get('k1')).toBeNull();
-        });
-
-        it('secrets list/set/get/remove (PD-4)', async () => {
-            const api = createMockPluginApi();
-            expect(await api.secrets.list()).toEqual([]);
-            await api.secrets.set('token', 'plaintext');
-            expect(await api.secrets.list()).toEqual(['token']);
-            expect(await api.secrets.get('token')).toBe('plaintext');
-            await api.secrets.remove('token');
-            expect(await api.secrets.get('token')).toBeNull();
-        });
-
-        it('storage get/set/remove/keys work correctly', () => {
-            const api = createMockPluginApi();
-
-            expect(api.storage.get('missing')).toBeNull();
-            expect(api.storage.keys()).toEqual([]);
-
-            api.storage.set('key1', 'value1');
-            api.storage.set('key2', { nested: true });
-
-            expect(api.storage.get('key1')).toBe('value1');
-            expect(api.storage.get('key2')).toEqual({ nested: true });
-            expect(api.storage.keys()).toEqual(['key1', 'key2']);
-
-            api.storage.remove('key1');
-            expect(api.storage.get('key1')).toBeNull();
-            expect(api.storage.keys()).toEqual(['key2']);
-        });
-
-        it('config get returns empty object', () => {
-            const api = createMockPluginApi();
-            expect(api.config.get()).toEqual({});
-        });
-
-        it('config save does not throw', () => {
-            const api = createMockPluginApi();
-            expect(() => api.config.save({ key: 'value' })).not.toThrow();
-        });
-
-        it('fetch returns mock response', async () => {
-            const api = createMockPluginApi();
-            const response = await api.fetch('/test');
-            expect(response.status).toBe(200);
-        });
-
-        it('notify does not throw', () => {
-            const api = createMockPluginApi();
-            expect(() => api.notify('test message', 'info')).not.toThrow();
-        });
-
-        it('memory save returns success', async () => {
-            const api = createMockPluginApi();
-            const result = await api.memory.save({ type: 'fact', content: 'test' });
-            expect(result).toEqual({ success: true });
-        });
-
-        it('memory search returns empty results', async () => {
-            const api = createMockPluginApi();
-            const result = await api.memory.search('query');
-            expect(result).toEqual({ results: [] });
-        });
-
-        it('aee emit returns success', async () => {
-            const api = createMockPluginApi();
-            const result = await api.aee.emit('test.intent', { data: true });
-            expect(result).toEqual({ success: true });
-        });
+describe('createMockQuox', () => {
+    it('has pluginId and default user', async () => {
+        const q = createMockQuox({ pluginId: 'p-one' });
+        expect(q.pluginId).toBe('p-one');
+        expect(await q.getUser()).toEqual({ userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' });
     });
 
-    describe('setupPluginTestEnv / teardownPluginTestEnv', () => {
-        // setupPluginTestEnv() requires react, react-dom/client, react-router-dom
-        // which are only available in plugin projects (not in the SDK repo itself).
-        // We test the registration mechanism without calling setupPluginTestEnv.
+    it('user can be overridden', async () => {
+        const q = createMockQuox({ user: { role: 'viewer' } });
+        expect((await q.getUser()).role).toBe('viewer');
+        expect((await q.getUser()).userId).toBe('user_test');
+    });
 
-        afterEach(() => {
-            delete window.__quoxSharedDeps;
-            delete window.__quoxPluginRegister;
-            delete window.__quoxRegisteredPlugins;
-        });
+    it('storage get/set/remove/keys/getAll', async () => {
+        const q = createMockQuox();
+        expect(await q.storage.get('a')).toBeNull();
+        await q.storage.set('a', 1);
+        await q.storage.set('b', { x: 2 });
+        expect(await q.storage.get('b')).toEqual({ x: 2 });
+        expect((await q.storage.keys()).sort()).toEqual(['a', 'b']);
+        expect(await q.storage.getAll()).toEqual({ a: 1, b: { x: 2 } });
+        await q.storage.remove('a');
+        expect(await q.storage.get('a')).toBeNull();
+    });
 
-        it('manual setup mirrors setupPluginTestEnv behaviour', () => {
-            // Simulate what setupPluginTestEnv does
-            window.__quoxSharedDeps = { React: {}, ReactDOM: {}, ReactRouterDOM: {} };
-            const registered = {};
-            window.__quoxPluginRegister = (pluginId, exports) => { registered[pluginId] = exports; };
-            window.__quoxRegisteredPlugins = registered;
+    it('storage values are cloned', async () => {
+        const q = createMockQuox();
+        const v = { n: 1 };
+        await q.storage.set('k', v);
+        v.n = 2;
+        expect(await q.storage.get('k')).toEqual({ n: 1 });
+    });
 
-            expect(window.__quoxSharedDeps).toBeDefined();
-            expect(typeof window.__quoxPluginRegister).toBe('function');
-        });
+    it('fetch defaults to 404', async () => {
+        const q = createMockQuox();
+        expect(await q.fetch('items')).toEqual({ status: 404, ok: false, body: '' });
+    });
 
-        it('register function records plugins', () => {
-            const registered = {};
-            window.__quoxPluginRegister = (pluginId, exports) => { registered[pluginId] = exports; };
-            window.__quoxRegisteredPlugins = registered;
+    it('fetch uses injected handler and derives ok / stringifies body', async () => {
+        const q = createMockQuox({ fetch: (path, o) => ({ status: 200, body: { path, m: o.method } }) });
+        const r = await q.fetch('items', { method: 'POST' });
+        expect(r.ok).toBe(true);
+        expect(JSON.parse(r.body)).toEqual({ path: 'items', m: 'POST' });
+    });
 
-            const exports = { routes: { '/test': () => null } };
-            window.__quoxPluginRegister('test-plugin', exports);
-            expect(window.__quoxRegisteredPlugins['test-plugin']).toBe(exports);
-        });
+    it('fetch refuses absolute URLs and traversal like the host', async () => {
+        const q = createMockQuox();
+        await expect(q.fetch('https://evil.example/x')).rejects.toThrow(/relative/);
+        await expect(q.fetch('../other/x')).rejects.toThrow(/relative/);
+    });
 
-        it('teardown removes all globals', () => {
-            window.__quoxSharedDeps = {};
-            window.__quoxPluginRegister = () => {};
-            window.__quoxRegisteredPlugins = {};
+    it('memory save/search', async () => {
+        const q = createMockQuox();
+        await q.memory.save({ type: 'fact', content: 'the sky is blue' });
+        await q.memory.save({ type: 'fact', content: 'grass is green' });
+        const r = await q.memory.search('sky');
+        expect(r.results).toHaveLength(1);
+        expect(q.memoryStore).toHaveLength(2);
+    });
 
-            // Simulate teardownPluginTestEnv
-            delete window.__quoxSharedDeps;
-            delete window.__quoxPluginRegister;
-            delete window.__quoxRegisteredPlugins;
+    it('logs aee, notify, navigate', async () => {
+        const q = createMockQuox();
+        await q.aee.emit('x.y', { a: 1 });
+        await q.notify('hi');
+        await q.notify('bad', 'error');
+        await q.navigate('/plugins/p');
+        expect(q.aeeLog).toEqual([{ intent: 'x.y', payload: { a: 1 } }]);
+        expect(q.notifyLog).toEqual([{ message: 'hi', type: 'info' }, { message: 'bad', type: 'error' }]);
+        expect(q.navigateLog).toEqual(['/plugins/p']);
+    });
 
-            expect(window.__quoxSharedDeps).toBeUndefined();
-            expect(window.__quoxPluginRegister).toBeUndefined();
-            expect(window.__quoxRegisteredPlugins).toBeUndefined();
-        });
+    it('onEvent sets a handler that emitEvent drives', () => {
+        const q = createMockQuox();
+        const seen = [];
+        q.onEvent((m, a) => seen.push([m, a]));
+        q.emitEvent('route', ['/plugins/p']);
+        expect(seen).toEqual([['route', ['/plugins/p']]]);
+    });
+
+    it('does not expose host-only surfaces', () => {
+        const q = createMockQuox();
+        for (const k of ['durable', 'secrets', 'config', 'cache', 'chat']) expect(q[k]).toBeUndefined();
+    });
+});
+
+describe('installMockQuox', () => {
+    afterEach(() => { uninstallMockQuox(); delete globalThis.window; });
+
+    it('installs window.quox, usePluginApi and a register recorder, then uninstalls', () => {
+        globalThis.window = {};
+        const q = installMockQuox({ pluginId: 'inst' });
+        expect(window.quox).toBe(q);
+        expect(getQuox()).toBe(q);
+        expect(window.usePluginApi()).toBe(q);
+        window.__quoxPluginRegister('inst', { routes: {} });
+        expect(q.registered.inst).toEqual({ routes: {} });
+        uninstallMockQuox();
+        expect(window.quox).toBeUndefined();
+        expect(window.__quoxPluginRegister).toBeUndefined();
+    });
+
+    it('works when window is undefined and restores that', () => {
+        delete globalThis.window;
+        const q = installMockQuox();
+        expect(globalThis.window.quox).toBe(q);
+        q.uninstall();
+        expect(globalThis.window).toBeUndefined();
+    });
+});
+
+describe('deprecated helpers', () => {
+    it('throw actionable errors naming the replacement', () => {
+        expect(() => createMockPluginApi()).toThrow(/createMockQuox/);
+        expect(() => setupPluginTestEnv()).toThrow(/installMockQuox/);
+        expect(() => teardownPluginTestEnv()).toThrow(/uninstallMockQuox/);
+        expect(() => setupGlassMocks()).toThrow(/plugin\.css/);
     });
 });

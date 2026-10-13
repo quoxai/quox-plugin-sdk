@@ -1,7 +1,3 @@
-/**
- * Lexical AST tests for no-cache-as-primary-storage. We use ESLint's RuleTester
- * with `espree` (the default parser) so the package has zero runtime deps.
- */
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
 import rule from '../rules/no-cache-as-primary-storage.js';
@@ -14,40 +10,32 @@ describe('no-cache-as-primary-storage', () => {
     it('valid + invalid samples', () => {
         ruleTester.run('no-cache-as-primary-storage', rule, {
             valid: [
-                // cache + durable in same module → fine
-                { code: `function go(api) { api.cache.set('k', 1); api.durable.set('k', 1); }` },
-                // cache + memory.save in same module → fine
-                { code: `function go(api) { api.cache.set('k', 1); api.memory.save({}); }` },
-                // only durable, no cache → fine
-                { code: `function go(api) { api.durable.set('k', 1); }` },
-                // cache reads only (no writes) → fine
-                { code: `function go(api) { const v = api.cache.get('k'); }` },
-                // nested member path
-                { code: `function go(api) { api.cache.set('k', 1); api.x.durable.set('k', 1); }` },
+                { code: `async function go(q) { localStorage.setItem('k', '1'); await q.storage.set('k', 1); }` },
+                { code: `async function go() { sessionStorage.setItem('k', '1'); await window.quox.memory.save({}); }` },
+                { code: `async function go() { await getQuox().storage.set('k', 1); }` },
+                { code: `function go() { const v = localStorage.getItem('k'); }` },
+                { code: `function go(api) { api.cache.set('k', 1); api.x.storage.set('k', 1); }` },
             ],
             invalid: [
-                // cache as the only persistence
                 {
-                    code: `function go(api) { api.cache.set('k', 1); api.cache.set('m', 2); }`,
-                    errors: [
-                        { messageId: 'noCacheAsPrimary' },
-                        { messageId: 'noCacheAsPrimary' },
-                    ],
+                    code: `function go() { localStorage.setItem('k', '1'); sessionStorage.setItem('m', '2'); }`,
+                    errors: [{ messageId: 'noCacheAsPrimary' }, { messageId: 'noCacheAsPrimary' }],
                 },
-                // legacy api.storage flagged with the deprecation message
                 {
-                    code: `function go(api) { api.storage.set('k', 1); api.durable.set('k', 1); }`,
-                    errors: [{ messageId: 'useCacheNotStorage' }],
+                    code: `function go(api) { api.cache.set('k', 1); }`,
+                    errors: [{ messageId: 'noCacheAsPrimary' }],
                 },
-                // both: storage deprecated AND only-cache complaint
                 {
-                    code: `function go(api) { api.storage.set('k', 1); api.cache.set('m', 2); }`,
-                    errors: [
-                        { messageId: 'useCacheNotStorage' },
-                        { messageId: 'noCacheAsPrimary' },
-                    ],
+                    code: `function go() { window.localStorage.setItem('k', '1'); }`,
+                    errors: [{ messageId: 'noCacheAsPrimary' }],
                 },
             ],
         });
+    });
+
+    it('advice points at window.quox.storage, never api.durable', async () => {
+        const { expect } = await import('vitest');
+        expect(rule.meta.messages.noCacheAsPrimary).toContain('window.quox.storage');
+        expect(JSON.stringify(rule.meta.messages)).not.toContain('durable');
     });
 });

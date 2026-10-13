@@ -1,5 +1,10 @@
 /**
- * QuoxCORE Plugin SDK — TypeScript type definitions
+ * quox-plugin-sdk: TypeScript types for Quox community plugins.
+ *
+ * Community plugins run in a sandboxed iframe. Their host surface is exactly
+ * `window.quox` (QuoxPluginApi), the shared React deps and
+ * `window.__quoxPluginRegister`. The agent/team/marketing manifest types below
+ * are part of the manifest schema but are IGNORED by the community sandbox.
  */
 
 // --- Config & Safety Types ---
@@ -185,7 +190,17 @@ export interface Testimonial {
 
 // --- Plugin Manifest ---
 
+/**
+ * manifest.json. The host REQUIRES `id`, `name`, `version`. The id must match
+ * MANIFEST_ID_PATTERN and must not start with a reserved prefix
+ * (RESERVED_ID_PREFIXES), both exported from "quox-plugin-sdk".
+ *
+ * Fields the host reads: id, name, version, author, permissions, sidebar,
+ * routeGuards, integrity, official, backend, agentDefinition, agentPersona,
+ * delegatorKeywords. Everything else is optional metadata.
+ */
 export interface PluginManifest {
+    /** Lowercase alphanumeric + dashes, 3-64 chars. No core-/system-/quox-/admin- prefix. */
     id: string;
     name: string;
     version: string;
@@ -194,394 +209,159 @@ export interface PluginManifest {
     category?: string;
     license?: 'free' | string;
     permissions?: PluginPermission[];
+    /** Sidebar entries. Ignored if the bundle registers its own via registerPlugin(). */
     sidebar?: SidebarItem[];
+    /** Route map (path to component name). */
     routes?: Record<string, string>;
+    /**
+     * Per-route access guards, keyed by route path. Lives in the manifest so
+     * the signature covers it.
+     */
+    routeGuards?: Record<string, { minRole?: 'runner' | 'builder' | 'admin'; auditorAllowed?: boolean }>;
+    /** Bundle integrity hash used for official (signed) bundles. Set by tooling. */
+    integrity?: string | Record<string, string>;
+    /** Only honoured for bundles signed by a Quox official key. Community plugins cannot set this. */
+    official?: boolean;
     minQuoxVersion?: string;
     backend?: {
         image: string;
         healthPath?: string;
         port?: number;
     };
+
+    // --- The fields below are IGNORED by the community sandbox. ---
+    // They apply to official/in-parent plugins only; they are kept in the
+    // type so existing manifests still type-check.
+
+    /** Ignored by the community sandbox. */
     configSchema?: Record<string, ConfigSchemaField>;
+    /** Ignored by the community sandbox. */
     safety?: SafetyConfig;
+    /** Ignored by the community sandbox. */
     nocIntegration?: NocIntegration;
+    /** Ignored by the community sandbox. */
     specialist?: SpecialistAgent;
+    /** Agent registration is not available to community plugins. */
     agentDefinition?: AgentDefinition;
+    /** Agent registration is not available to community plugins. */
     agentPersona?: AgentPersona;
+    /** Agent registration is not available to community plugins. */
+    delegatorKeywords?: string[];
+    /** Ignored by the community sandbox. */
     toolDefinitions?: ToolDefinition[];
+    /** Ignored by the community sandbox. */
     team?: TeamDefinition;
+    /** Ignored by the community sandbox. */
     agents?: AgentDefinition[];
+    /** Ignored by the community sandbox. */
     agentPersonas?: AgentPersona[];
+    /** Marketing metadata only. */
     comparison?: ComparisonTier;
+    /** Marketing metadata only. */
     limits?: TierLimits;
+    /** Marketing metadata only. */
     capabilities?: Capabilities;
+    /** Marketing metadata only. */
     heroGradient?: string;
+    /** Marketing metadata only. */
     accentColor?: string;
+    /** Marketing metadata only. */
     badge?: string;
+    /** Marketing metadata only. */
     testimonials?: Testimonial[];
+    /** Marketing metadata only. */
     marketingPoints?: string[];
 }
 
 export type PluginPermission =
     | 'sidebar'
     | 'storage'
-    | 'durable'   // server-side org/user-scoped KV (api.durable) — host-enforced
-    | 'secrets'   // encrypted secrets vault (api.secrets) — host-enforced
     | 'network'
     | 'memory'
     | 'notifications'
-    | 'aee'
-    | 'tools';
+    | 'aee';
 
 export interface SidebarItem {
+    /** Route path, normally `/plugins/<id>` or a sub-path of it. */
     path: string;
     label: string;
-    icon: string;
-    minRole?: 'runner' | 'builder' | 'admin';
-    badge?: string;
+    icon?: string;
+    /** Sidebar section heading. */
+    section?: string;
+    title?: string;
 }
 
+/** What a plugin passes to registerPlugin(). Components stay in the sandbox frame. */
 export interface PluginExports {
-    routes?: Record<string, React.ComponentType>;
+    routes?: Record<string, import('react').ComponentType<any>>;
     sidebar?: SidebarItem[];
-    hooks?: {
-        // DOM lifecycle (stable, fire on every page load)
-        onActivate?: (api: PluginAPI) => void | Promise<void>;
-        onDeactivate?: () => void | Promise<void>;
-        // PD-5 install lifecycle (fire once per org-level boundary)
-        onInstall?: (api: PluginAPI, ctx: { manifestVersion: string }) => void | Promise<void>;
-        onUpgrade?: (api: PluginAPI, ctx: { fromVersion: string | null; toVersion: string }) => void | Promise<void>;
-        onUninstall?: (api: PluginAPI, ctx: { deleteData: boolean }) => void | Promise<void>;
-        // Reserved — wired up when backup/restore integration lands.
-        onRestore?: (api: PluginAPI, ctx: { backupSnapshot: unknown }) => void | Promise<void>;
-    };
 }
 
 /**
- * Plugin runtime API.
- *
- * Persistence model:
- *   - api.cache    — browser-only, ephemeral. NOT durable. Use for UI state.
- *   - api.durable  — server-backed, org/user scoped, survives all browser
- *                    state resets and syncs across devices. Default for
- *                    anything a user expects to persist.
- *   - api.secrets  — encrypted at rest server-side. Plaintext returned only
- *                    via api.secrets.get() and audit-logged.
- *   - api.memory   — long-form facts/observations into the QuoxCORE memory
- *                    service.
- *
- * `api.storage` is preserved as a deprecated alias of `api.cache` for one
- * minor release. New plugins must use `api.cache` (for UI state) or
- * `api.durable` (for anything that should survive). Future SDK versions
- * remove `api.storage` entirely.
+ * The plugin API: `window.quox`, available inside the Quox sandbox frame.
+ * Every method returns a Promise (RPC over postMessage). This is the WHOLE
+ * surface: there is no durable, secrets, config, cache or chat API for
+ * community plugins.
  */
-export interface PluginAPI {
-    pluginId: string;
+export interface QuoxPluginApi {
+    readonly pluginId: string;
 
-    /** Browser-only namespaced KV. Ephemeral — never use as the only store. */
-    cache: {
-        get(key: string): any;
-        set(key: string, value: any): void;
-        remove(key: string): void;
-        keys(): string[];
+    /** Server-backed key/value store scoped to this plugin. Values must be structured-cloneable. */
+    storage: {
+        get(key: string): Promise<any>;
+        set(key: string, value: any): Promise<void>;
+        remove(key: string): Promise<void>;
+        keys(): Promise<string[]>;
+        getAll(): Promise<Record<string, any>>;
     };
 
-    /** @deprecated Use `api.cache` (UI state) or `api.durable` (persistent data). */
-    storage: PluginAPI['cache'];
+    /**
+     * Call this plugin's own backend namespace. `path` is RELATIVE to
+     * /collector/api/v1/plugins/<id>/ ; absolute URLs and ".." are refused and
+     * methods are allowlisted. Resolves with the response (does not throw on
+     * non-2xx); `body` is the raw response text.
+     */
+    fetch(path: string, options?: { method?: string; headers?: Record<string, string>; body?: string }): Promise<{
+        status: number;
+        ok: boolean;
+        body: string;
+    }>;
 
-    /** Server-backed durable KV — org-scoped by default; pass scope:'user' for per-user. */
-    durable: {
-        get(key: string, opts?: { scope?: 'org' | 'user' }): Promise<any>;
-        set(key: string, value: any, opts?: { scope?: 'org' | 'user' }): Promise<void>;
-        remove(key: string, opts?: { scope?: 'org' | 'user' }): Promise<void>;
-        keys(opts?: { scope?: 'org' | 'user' }): Promise<string[]>;
-    };
-
-    /** Per-plugin encrypted secrets vault. Plaintext only via get(); reads audit. */
-    secrets: {
-        list(): Promise<string[]>;
-        get(name: string): Promise<string | null>;
-        set(name: string, value: string, opts?: { description?: string }): Promise<void>;
-        remove(name: string): Promise<void>;
-    };
-
-    config: {
-        get(): Record<string, any>;
-        save(config: Record<string, any>): void;
-    };
-    fetch(path: string, options?: RequestInit): Promise<Response>;
-    notify(message: string, type?: 'info' | 'success' | 'warning' | 'error'): void;
     memory: {
         save(entry: { type: string; content: string; tags?: string[] }): Promise<any>;
         search(query: string, limit?: number): Promise<any>;
     };
+
     aee: {
         emit(intent: string, payload: any): Promise<any>;
     };
 
-    /** PSDK-4: navigate the host shell (dispatches quox-navigate). */
-    navigate(path: string): void;
+    /** Navigate the host shell. */
+    navigate(path: string): Promise<void>;
+    notify(message: string, type?: 'info' | 'success' | 'warning' | 'error'): Promise<void>;
+    getUser(): Promise<{ userId: string; orgId: string; role: string; tier: string }>;
 
-    /** PSDK-4: current user context, read from host auth state. */
-    getUser(): { userId: string | null; orgId: string | null; role: string; tier: string };
-
-    /**
-     * PSDK-4: agent chat. openSidebar dispatches quox-open-agent-chat; the
-     * host (SDK-DX P4) renders AgentChatPanel in a right-side dock. Dismiss
-     * with a quox-close-agent-chat window event.
-     */
-    chat: {
-        openSidebar(agentId: string, options?: { agentName?: string; agentColor?: string; additionalContext?: string; width?: number }): void;
-    };
+    /** Set a handler for host events (for example `route`). Synchronous. */
+    onEvent(fn: (method: string, args: any[]) => void): void;
 }
+
+/** @deprecated Renamed to QuoxPluginApi. The old PluginAPI surface does not exist in the sandbox. */
+export type PluginAPI = QuoxPluginApi;
 
 export interface SharedDeps {
     React: typeof import('react');
     ReactDOM: typeof import('react-dom/client');
     ReactRouterDOM: typeof import('react-router-dom');
-}
-
-// --- __quoxGlass component library ---
-//
-// Types below match the PRODUCTION implementations exposed by
-// quox-dashboard's thirdPartyPluginHost.js (window.__quoxGlass, PSDK-2).
-// The quox-plugin-vite dev host (P1) installs a functional but simplified
-// approximation of the same names at `npm run dev` time — see
-// docs/plugin-api.md "__quoxGlass component library" for the honest list of
-// dev-vs-prod deltas (e.g. GlassPanel's `highlight`/`hoverable`/`onClick`
-// props are prod-only; AgentChatPanel/AgentChatSidebar render a static
-// "dev preview" placeholder instead of a live agent).
-
-/** quox-dashboard/src/components/compliance/glass-primitives.jsx */
-export interface GlassPanelProps {
-    children?: React.ReactNode;
-    style?: React.CSSProperties;
-    /** Hex/CSS color used to tint the top/left border + glow. */
-    highlight?: string;
-    onClick?: () => void;
-    /** Enables hover lift + press-down transforms. */
-    hoverable?: boolean;
-}
-
-export interface GlassPillProps {
-    children?: React.ReactNode;
-    color?: string;
-    style?: React.CSSProperties;
-}
-
-export interface GlassTab {
-    id: string;
-    label: React.ReactNode;
-    icon?: React.ReactNode;
-}
-
-export interface GlassTabBarProps {
-    tabs: GlassTab[];
-    activeTab: string;
-    onTabChange: (tabId: string) => void;
-}
-
-export interface SectionHeaderProps {
-    title: React.ReactNode;
-    subtitle?: React.ReactNode;
-    action?: React.ReactNode;
-}
-
-export interface ProgressRingProps {
-    /** 0-100. */
-    value: number;
-    size?: number;
-    strokeWidth?: number;
-    /** Defaults to a value/threshold-derived color (green >90, amber >=60, else red). */
-    color?: string;
-    label?: React.ReactNode;
-}
-
-export interface SparklineProps {
-    data?: number[];
-    color?: string;
-    width?: number;
-    height?: number;
-}
-
-export interface GlassSkeletonProps {
-    height?: number;
-    style?: React.CSSProperties;
-}
-
-export interface GlassErrorProps {
-    message?: React.ReactNode;
-    onRetry?: () => void;
-}
-
-/** quox-dashboard/src/components/ui/MarkdownContent.jsx */
-export interface MarkdownContentProps {
-    children?: string;
-    /** Applies the `.md-compact` class for denser rendering (sidebars). */
-    compact?: boolean;
-    className?: string;
-}
-
-/**
- * quox-dashboard/src/components/chat/AgentChatPanel.jsx
- *
- * Full-featured multi-tab agent chat panel — wraps ChatTab with automatic
- * auth/workspace/LLM-routing context wiring. Renders a 48px collapsed rail
- * when `collapsed` is true.
- */
-export interface AgentChatPanelProps {
-    /** Agent id to chat with, e.g. "auditus". Resolved via entityRegistry for name/color fallback. */
-    agentId: string;
-    /** Overrides the display name resolved from the agent's entity registry entry. */
-    agentName?: string;
-    /** Overrides the accent color resolved from the agent's entity registry entry. Defaults to '#30ff90'. */
-    agentColor?: string;
-    /** Extra context text injected into the conversation's system context. */
-    additionalContext?: string;
-    /** When true, renders only the 48px collapsed rail (click to expand via onToggle). */
-    collapsed?: boolean;
-    onToggle?: () => void;
-    /** Panel width in px when expanded. Defaults to 300 (AppShell's SDK-DX P4 dock uses 360). */
-    width?: number;
-    /** Custom header node rendered above the chat body. */
-    headerContent?: React.ReactNode;
-    /** ChatTab session/tab id. Defaults to `${agentId}-panel`. */
-    tabId?: string;
-    className?: string;
-}
-
-/** quox-dashboard/src/components/chat/AgentChatSidebar.jsx */
-export interface AgentChatSidebarExtraSection {
-    id: string;
-    label: React.ReactNode;
-    badge?: number;
-    icon?: React.ReactNode;
-    content: React.ReactNode;
-}
-
-/**
- * quox-dashboard/src/components/chat/AgentChatSidebar.jsx
- *
- * Lightweight sidebar chat pattern (PSDK-1) — the same primitive that backs
- * 14+ built-in *ChatSidebar.jsx surfaces in quox-dashboard. Prefer this over
- * AgentChatPanel for docked/embedded sidebars; use AgentChatPanel for a
- * fuller multi-tab experience.
- */
-export interface AgentChatSidebarProps {
-    agentId: string;
-    agentName?: string;
-    agentColor?: string;
-    agentRole?: string;
-    avatarUrl?: string;
-    /** Builds extra context passed to ChatEngine, e.g. `async () => ({ surface: 'sidebar' })`. */
-    contextBuilder?: () => Promise<Record<string, any>> | Record<string, any>;
-    /** Suggestion chips shown in the empty state (max 6 rendered). */
-    suggestions?: string[];
-    collapsed?: boolean;
-    onToggle?: () => void;
-    headerContent?: React.ReactNode;
-    placeholder?: string;
-    emptyIcon?: React.ReactNode;
-    emptyText?: string;
-    className?: string;
-    enableVoice?: boolean;
-    enableSmartRouter?: boolean;
-    enableMemory?: boolean;
-    /** Session storage key prefix. Defaults to `${agentId.toUpperCase()}_SIDEBAR`. */
-    sessionPrefix?: string;
-    vizStorageKey?: string;
-    /** Adds a section toggle bar under the header; chat is always the 'chat' section. */
-    extraSections?: AgentChatSidebarExtraSection[];
-    /** Controlled active section id. Falls back to internal state when omitted. */
-    activeSection?: string;
-    onSectionChange?: (sectionId: string) => void;
-    defaultSection?: string;
-    /** Populated by the component each render with imperative send/clear handles. */
-    chatHandleRef?: { current: { send: (text: string) => void; clear: () => void } | null };
-    renderMessageAddon?: (message: Record<string, any>) => React.ReactNode;
-    onAssistantMessage?: (message: Record<string, any>) => void;
-    /** Extra header controls rendered before the New Chat button and collapse chevron. */
-    headerExtra?: React.ReactNode;
-}
-
-/**
- * window.__quoxGlass — real quox-dashboard glass-design-system components
- * exposed at plugin-activation time (production) or a functional dev
- * approximation exposed by quox-plugin-vite's dev host (`npm run dev`, P1).
- * See thirdPartyPluginHost.js `initPluginHost()` (PSDK-2) for the canonical
- * production export list.
- */
-export interface QuoxGlassComponents {
-    // Chat patterns (2 shipped tiers; AgentChatPage full-screen tier is a
-    // future phase — see the TODO comment in thirdPartyPluginHost.js).
-    AgentChatSidebar: React.ComponentType<AgentChatSidebarProps>;
-    AgentChatPanel: React.ComponentType<AgentChatPanelProps>;
-
-    // Glass design system
-    GlassPanel: React.ComponentType<GlassPanelProps>;
-    GlassPill: React.ComponentType<GlassPillProps>;
-    GlassTabBar: React.ComponentType<GlassTabBarProps>;
-    SectionHeader: React.ComponentType<SectionHeaderProps>;
-    ProgressRing: React.ComponentType<ProgressRingProps>;
-    Sparkline: React.ComponentType<SparklineProps>;
-    GlassSkeleton: React.ComponentType<GlassSkeletonProps>;
-    GlassError: React.ComponentType<GlassErrorProps>;
-
-    // Design tokens
-    COLORS: {
-        purple: string;
-        cyan: string;
-        green: string;
-        amber: string;
-        red: string;
-        teal: string;
-        indigo: string;
-        white: string;
-        dimText: string;
-        subtleText: string;
-    };
-    STATUS_COLORS: {
-        compliant: string;
-        partial: string;
-        'non-compliant': string;
-        not_measured: string;
-        gap: string;
-        pass: string;
-        fail: string;
-        warn: string;
-        pending: string;
-    };
-    PROTOCOL_COLORS: {
-        AEE: string;
-        AOCL: string;
-        VOLT: string;
-        WARD: string;
-    };
-    /** Monospace font stack: `'JetBrains Mono','Fira Code',monospace`. */
-    M: string;
-    /** Sans-serif font stack: `'Inter',system-ui,sans-serif`. */
-    F: string;
-
-    // Content rendering
-    MarkdownContent: React.ComponentType<MarkdownContentProps>;
+    ReactJSXRuntime: typeof import('react/jsx-runtime');
 }
 
 declare global {
     interface Window {
+        /** The plugin API. Present inside a Quox host only. */
+        quox: QuoxPluginApi;
+        /** Same object as window.quox. */
+        usePluginApi: () => QuoxPluginApi;
         __quoxSharedDeps: SharedDeps;
         __quoxPluginRegister: (pluginId: string, exports: PluginExports) => void;
-        __quoxPluginApi: Record<string, PluginAPI>;
-        /**
-         * Glass design-system + chat components. Present in production after
-         * `initPluginHost()` runs (before first render) and in dev via the
-         * quox-plugin-vite dev host (unless `?bare=1` or `devHost: false`).
-         */
-        __quoxGlass?: QuoxGlassComponents;
-        /**
-         * Dev-only: the plugin project's parsed manifest.json, injected by
-         * quox-plugin-vite's dev host at `/__quox-dev/manifest.js`. Never set
-         * in production — plugin code should not rely on this at runtime.
-         */
-        __quoxDevManifest?: PluginManifest;
     }
 }

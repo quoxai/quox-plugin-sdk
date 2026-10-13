@@ -1,145 +1,157 @@
 /**
- * QuoxCORE Plugin SDK — Testing utilities
+ * quox-plugin-sdk testing utilities.
  *
- * Provides mocks for the plugin API and helpers for rendering
- * plugin components in a test environment.
+ * createMockQuox() is an in-memory stand-in for `window.quox`, matching the
+ * surface a community plugin gets inside the Quox sandbox frame.
  */
+
+const DEFAULT_USER = { userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' };
+
+function clone(v) {
+    return v === undefined ? undefined : structuredClone(v);
+}
 
 /**
- * Create a mock PluginAPI for testing.
- * @param {string} pluginId
- * @returns {import('./types').PluginAPI}
+ * Create an in-memory mock of window.quox.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.pluginId]
+ * @param {Partial<{userId:string,orgId:string,role:string,tier:string}>} [opts.user]
+ * @param {(path: string, options: object) => ({status:number, ok?:boolean, body?:any}|Promise<any>)} [opts.fetch]
+ *        handler for window.quox.fetch; defaults to 404.
  */
-export function createMockPluginApi(pluginId = 'test-plugin') {
-    const cacheStore = new Map();
-    const durableStore = new Map(); // key includes scope
-    const secretsStore = new Map();
+export function createMockQuox(opts = {}) {
+    const pluginId = opts.pluginId || 'test-plugin';
+    const user = { ...DEFAULT_USER, ...(opts.user || {}) };
+    const fetchHandler = opts.fetch || (() => ({ status: 404, ok: false, body: '' }));
 
-    function durableKey(scope, key) { return `${scope}:${key}`; }
+    const storageMap = new Map();
+    const memoryStore = [];
+    const aeeLog = [];
+    const notifyLog = [];
+    const navigateLog = [];
+    let eventHandler = null;
 
-    const cache = {
-        get(key) { return cacheStore.get(key) ?? null; },
-        set(key, value) { cacheStore.set(key, value); },
-        remove(key) { cacheStore.delete(key); },
-        keys() { return [...cacheStore.keys()]; },
-    };
-
-    return {
+    const quox = {
         pluginId,
-        cache,
-        // Deprecated alias kept for plugins not yet migrated.
-        storage: cache,
-        durable: {
-            async get(key, opts = {}) {
-                return durableStore.get(durableKey(opts.scope || 'org', key)) ?? null;
-            },
-            async set(key, value, opts = {}) {
-                durableStore.set(durableKey(opts.scope || 'org', key), value);
-            },
-            async remove(key, opts = {}) {
-                durableStore.delete(durableKey(opts.scope || 'org', key));
-            },
-            async keys(opts = {}) {
-                const prefix = `${opts.scope || 'org'}:`;
-                return [...durableStore.keys()]
-                    .filter(k => k.startsWith(prefix))
-                    .map(k => k.slice(prefix.length));
-            },
+
+        storage: {
+            async get(key) { return storageMap.has(key) ? clone(storageMap.get(key)) : null; },
+            async set(key, value) { storageMap.set(key, clone(value)); },
+            async remove(key) { storageMap.delete(key); },
+            async keys() { return [...storageMap.keys()]; },
+            async getAll() { return Object.fromEntries([...storageMap].map(([k, v]) => [k, clone(v)])); },
         },
-        secrets: {
-            async list() { return [...secretsStore.keys()]; },
-            async get(name) { return secretsStore.has(name) ? secretsStore.get(name) : null; },
-            async set(name, value) { secretsStore.set(name, value); },
-            async remove(name) { secretsStore.delete(name); },
+
+        async fetch(path, options = {}) {
+            if (typeof path !== 'string' || /^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//') || path.split('/').includes('..')) {
+                throw new Error(`quox.fetch: path must be relative to the plugin namespace (got ${JSON.stringify(path)}); absolute URLs and ".." are refused`);
+            }
+            const r = (await fetchHandler(path, options)) || {};
+            const status = typeof r.status === 'number' ? r.status : 200;
+            const body = r.body === undefined || r.body === null ? ''
+                : typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
+            return { status, ok: typeof r.ok === 'boolean' ? r.ok : status >= 200 && status < 300, body };
         },
-        config: {
-            get() { return {}; },
-            save() {},
-        },
-        async fetch() { return new Response('{}', { status: 200 }); },
-        notify() {},
+
         memory: {
-            async save() { return { success: true }; },
-            async search() { return { results: [] }; },
+            async save(entry) { memoryStore.push(clone(entry)); return { success: true }; },
+            async search(query, limit = 10) {
+                const q = String(query || '').toLowerCase();
+                const results = memoryStore
+                    .filter((e) => JSON.stringify(e).toLowerCase().includes(q))
+                    .slice(0, limit)
+                    .map(clone);
+                return { results };
+            },
         },
+
         aee: {
-            async emit() { return { success: true }; },
+            async emit(intent, payload) { aeeLog.push({ intent, payload: clone(payload) }); return { success: true }; },
         },
-        // PSDK-4 surfaces (mirrors PluginSandbox.createPluginApi)
-        navigate() {},
-        getUser() {
-            return { userId: null, orgId: null, role: 'viewer', tier: 'free' };
-        },
-        chat: {
-            openSidebar() {},
-        },
+
+        async navigate(path) { navigateLog.push(path); },
+        async notify(message, type = 'info') { notifyLog.push({ message, type }); },
+        async getUser() { return { ...user }; },
+        onEvent(fn) { eventHandler = typeof fn === 'function' ? fn : null; },
+
+        // Test helpers (not part of the real window.quox surface).
+        storageMap,
+        memoryStore,
+        aeeLog,
+        notifyLog,
+        navigateLog,
+        registered: {},
+        emitEvent(method, args = []) { if (eventHandler) eventHandler(method, args); },
+        uninstall() { uninstallMockQuox(); },
     };
+    return quox;
 }
 
+let installed = null;
+
 /**
- * Set up the global window mocks for plugin testing.
- * Call in beforeEach/beforeAll.
+ * Install a mock as window.quox (plus window.usePluginApi and a recording
+ * window.__quoxPluginRegister). Creates globalThis.window when absent.
+ * Returns the mock; call mock.uninstall() or uninstallMockQuox() to clean up.
  */
+export function installMockQuox(opts = {}) {
+    if (installed) uninstallMockQuox();
+    const createdWindow = typeof globalThis.window === 'undefined';
+    if (createdWindow) globalThis.window = {};
+    const w = globalThis.window;
+    const previous = {
+        quox: w.quox,
+        usePluginApi: w.usePluginApi,
+        register: w.__quoxPluginRegister,
+        deps: w.__quoxSharedDeps,
+    };
+    const mock = createMockQuox(opts);
+    w.quox = mock;
+    w.usePluginApi = () => mock;
+    w.__quoxPluginRegister = (id, exports) => { mock.registered[id] = exports; };
+    if (opts.sharedDeps) w.__quoxSharedDeps = opts.sharedDeps;
+    installed = { createdWindow, previous, setDeps: !!opts.sharedDeps };
+    return mock;
+}
+
+/** Remove what installMockQuox() installed and restore prior values. */
+export function uninstallMockQuox() {
+    if (!installed) return;
+    const { createdWindow, previous, setDeps } = installed;
+    installed = null;
+    const w = globalThis.window;
+    if (!w) return;
+    const restore = (key, val) => { if (val === undefined) delete w[key]; else w[key] = val; };
+    restore('quox', previous.quox);
+    restore('usePluginApi', previous.usePluginApi);
+    restore('__quoxPluginRegister', previous.register);
+    if (setDeps) restore('__quoxSharedDeps', previous.deps);
+    if (createdWindow) delete globalThis.window;
+}
+
+/** @deprecated Use createMockQuox(). */
+export function createMockPluginApi() {
+    throw new Error(
+        'createMockPluginApi() was removed: its api.cache/durable/secrets/config/chat surface does not exist in the ' +
+        'community sandbox. Use createMockQuox() (window.quox: storage, fetch, memory, aee, navigate, notify, getUser, onEvent).'
+    );
+}
+
+/** @deprecated Use installMockQuox(). */
 export function setupPluginTestEnv() {
-    // Mock shared deps
-    if (typeof window !== 'undefined') {
-        window.__quoxSharedDeps = {
-            React: require('react'),
-            ReactDOM: require('react-dom/client'),
-            ReactRouterDOM: require('react-router-dom'),
-            ReactJSXRuntime: require('react/jsx-runtime'),
-        };
-
-        const registered = {};
-        window.__quoxPluginRegister = (pluginId, exports) => {
-            registered[pluginId] = exports;
-        };
-        window.__quoxRegisteredPlugins = registered;
-    }
+    throw new Error('setupPluginTestEnv() was removed. Use installMockQuox() from "quox-plugin-sdk/testing".');
 }
 
-/**
- * Clean up global window mocks.
- * Call in afterEach/afterAll.
- */
+/** @deprecated Use uninstallMockQuox(). */
 export function teardownPluginTestEnv() {
-    if (typeof window !== 'undefined') {
-        delete window.__quoxSharedDeps;
-        delete window.__quoxGlass;
-        delete window.__quoxPluginRegister;
-        delete window.__quoxRegisteredPlugins;
-    }
+    throw new Error('teardownPluginTestEnv() was removed. Use uninstallMockQuox() from "quox-plugin-sdk/testing".');
 }
 
-/**
- * PSDK-7: Mock @quox/glass components for testing.
- * Call in setupPluginTestEnv or beforeEach.
- */
+/** @deprecated Glass components do not exist in the sandbox. */
 export function setupGlassMocks() {
-    if (typeof window !== 'undefined') {
-        const React = require('react');
-        const h = React.createElement;
-
-        // Minimal mock components that render their children
-        const mockComponent = (name) => (props) => h('div', { 'data-testid': name, ...props }, props.children);
-
-        window.__quoxGlass = {
-            AgentChatSidebar: mockComponent('AgentChatSidebar'),
-            AgentChatPanel: mockComponent('AgentChatPanel'),
-            GlassPanel: mockComponent('GlassPanel'),
-            GlassPill: mockComponent('GlassPill'),
-            GlassTabBar: mockComponent('GlassTabBar'),
-            SectionHeader: mockComponent('SectionHeader'),
-            ProgressRing: mockComponent('ProgressRing'),
-            Sparkline: mockComponent('Sparkline'),
-            GlassSkeleton: mockComponent('GlassSkeleton'),
-            GlassError: mockComponent('GlassError'),
-            MarkdownContent: mockComponent('MarkdownContent'),
-            COLORS: { purple: '#a855f7', cyan: '#38bdf8', green: '#30ff90', amber: '#f59e0b', red: '#ef4444', white: '#fff' },
-            STATUS_COLORS: { compliant: '#30ff90', partial: '#f59e0b', 'non-compliant': '#ef4444' },
-            PROTOCOL_COLORS: { AEE: '#38bdf8', AOCL: '#a855f7', VOLT: '#30ff90', WARD: '#06b6d4' },
-            M: "'JetBrains Mono',monospace",
-            F: "'Inter',sans-serif",
-        };
-    }
+    throw new Error(
+        'setupGlassMocks() was removed: window.__quoxGlass does not exist for community plugins. ' +
+        'Style your UI with plugin.css, the only stylesheet injected into the sandbox frame.'
+    );
 }
