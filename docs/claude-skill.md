@@ -20,7 +20,7 @@ Invoke the skill with one of five modes:
 /quox-plugin scaffold
 ```
 
-Guides you through template selection and scaffolding. Explains the 6 archetypes, recommends the best template based on your description, and walks through the generated files.
+Guides you through template selection and scaffolding. Explains the 8 templates, recommends the best template based on your description, and walks through the generated files.
 
 ### Manifest
 

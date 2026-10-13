@@ -1,128 +1,66 @@
 /**
- * AgentChat — Inline chat panel with messages, input, and quick action chips.
+ * AgentChat: ask the agent a question through YOUR backend.
+ *
+ * POST /agent/chat { message } -> { reply }. The host's own agent chat surface
+ * cannot be embedded in a sandboxed plugin, so this panel talks to your
+ * backend, which can call a model or the Quox API however you choose.
  */
+
+import { api } from '../lib/api';
+import { ErrorBanner } from '../lib/ui';
 
 const { React } = window.__quoxSharedDeps;
 
-export default function AgentChat({ pluginApi, suggestions, onClose }) {
+export default function AgentChat({ suggestions = [] }) {
     const [query, setQuery] = React.useState('');
     const [messages, setMessages] = React.useState([
-        { role: 'agent', text: 'Hello! I am the ${displayName} agent. I can scan infrastructure, analyse findings, and generate reports. What would you like me to do?' },
+        { role: 'agent', text: 'Hello! I am the ${displayName} agent. What would you like me to do?' },
     ]);
+    const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState(null);
 
-    const handleSend = async (text) => {
-        const message = text || query;
-        if (!message.trim()) return;
+    const send = async (text) => {
+        const message = (text || query).trim();
+        if (!message) return;
         setMessages(prev => [...prev, { role: 'user', text: message }]);
-
-        // Stub: In production, this routes through the specialist agent
-        setMessages(prev => [...prev, {
-            role: 'agent',
-            text: 'I received your request. In production, I would process this using my tools and return results.',
-        }]);
         setQuery('');
+        setBusy(true);
+        setError(null);
+        try {
+            const out = await api('/agent/chat', { method: 'POST', body: { message } });
+            setMessages(prev => [...prev, { role: 'agent', text: (out && out.reply) || '(empty reply)' }]);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setBusy(false);
+        }
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '380px',
-            background: '#1a1a2e',
-            borderLeft: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: 9999,
-        }}>
-            <div style={{
-                padding: '1rem',
-                borderBottom: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-            }}>
-                <span style={{ color: 'rgba(245,158,11,0.9)', fontWeight: 500 }}>
-                    ✨ ${displayName} Agent
-                </span>
-                <button
-                    onClick={onClose}
-                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1.1rem' }}
-                >
-                    ✕
-                </button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', minHeight: 0 }}>
-                {messages.map((msg, i) => (
-                    <div key={i} style={{ marginBottom: '0.75rem', textAlign: msg.role === 'user' ? 'right' : 'left' }}>
-                        <div style={{
-                            display: 'inline-block',
-                            padding: '0.5rem 0.75rem',
-                            borderRadius: '8px',
-                            maxWidth: '85%',
-                            background: msg.role === 'user' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
-                            color: 'rgba(255,255,255,0.8)',
-                            fontSize: '0.85rem',
-                        }}>
-                            {msg.text}
-                        </div>
+        <div className="qx-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="qx-section-title">Ask the agent</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                {messages.map((m, i) => (
+                    <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                        <span className={m.role === 'user' ? 'qx-pill qx-pill--info' : 'qx-pill qx-pill--ghost'} style={{ whiteSpace: 'normal' }}>{m.text}</span>
                     </div>
                 ))}
             </div>
-
-            {/* Quick action chips */}
-            <div style={{ padding: '0.5rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                {(suggestions || []).slice(0, 3).map((s, i) => (
-                    <button
-                        key={i}
-                        onClick={() => handleSend(s)}
-                        style={{
-                            padding: '0.25rem 0.5rem',
-                            background: 'rgba(255,255,255,0.05)',
-                            color: 'rgba(255,255,255,0.6)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: '9999px',
-                            cursor: 'pointer',
-                            fontSize: '0.7rem',
-                        }}
-                    >
-                        {s.length > 35 ? s.slice(0, 35) + '...' : s}
-                    </button>
+            <ErrorBanner error={error} title="Agent backend unavailable" />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {suggestions.slice(0, 3).map((s, i) => (
+                    <button key={i} className="qx-chip" onClick={() => send(s)} disabled={busy}>{s.length > 40 ? s.slice(0, 40) + '...' : s}</button>
                 ))}
             </div>
-
-            <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
                 <input
-                    type="text"
+                    className="qx-input"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    placeholder="Ask the agent..."
-                    style={{
-                        flex: 1,
-                        padding: '0.5rem 0.75rem',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '6px',
-                        color: 'rgba(255,255,255,0.85)',
-                        outline: 'none',
-                    }}
+                    onKeyDown={e => e.key === 'Enter' && send()}
+                    placeholder="Ask the agent"
                 />
-                <button
-                    onClick={() => handleSend()}
-                    style={{
-                        padding: '0.5rem 0.75rem',
-                        background: 'rgba(245,158,11,0.15)',
-                        color: 'rgba(245,158,11,0.9)',
-                        border: '1px solid rgba(245,158,11,0.3)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                    }}
-                >
-                    ➤
-                </button>
+                <button className="qx-btn qx-btn--primary" onClick={() => send()} disabled={busy}>{busy ? '...' : 'Send'}</button>
             </div>
         </div>
     );

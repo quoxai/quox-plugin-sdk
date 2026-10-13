@@ -1,128 +1,76 @@
 /**
- * ${displayName} — Main View
- * Card grid with storage persistence, add/remove, and empty state.
+ * ${displayName}: Main View
+ *
+ * Card grid persisted in plugin storage (getQuox().storage). Storage is
+ * per-org and server-side, so the list follows the user across browsers.
+ * Every storage call is an RPC and can fail; failures show a banner.
  */
 
-const { React } = window.__quoxSharedDeps;
-const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
-import { MOCK_ITEMS } from '../data/mock';
+import { loadValue, saveValue } from '../lib/api';
+import useLoad from '../lib/useLoad';
+import { ErrorBanner, Page, Spinner } from '../lib/ui';
 import EmptyState from '../components/EmptyState';
+import { MOCK_ITEMS } from '../data/mock';
 
-// pluginApi is passed as a prop by the plugin sandbox.
-// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
-export default function MainView({ pluginApi }) {
-    const [items, setItems] = React.useState(() => {
-        // Load from plugin storage if available
-        if (pluginApi?.storage) {
-            const saved = pluginApi.storage.get('items');
-            if (saved) return saved;
-        }
-        return MOCK_ITEMS;
-    });
+const { React } = window.__quoxSharedDeps;
 
-    // Persist to storage on change
+export default function MainView() {
+    const stored = useLoad(() => loadValue('items', MOCK_ITEMS));
+    const [items, setItems] = React.useState(null);
+    const [saveError, setSaveError] = React.useState(null);
+
     React.useEffect(() => {
-        if (pluginApi?.storage) {
-            pluginApi.storage.set('items', items);
+        if (stored.data) setItems(stored.data);
+    }, [stored.data]);
+
+    const persist = async (next) => {
+        const previous = items;
+        setItems(next);
+        setSaveError(null);
+        try {
+            await saveValue('items', next);
+        } catch (e) {
+            setItems(previous);
+            setSaveError(e);
         }
-    }, [items, pluginApi]);
-
-    const addItem = () => {
-        const id = Date.now().toString(36);
-        setItems(prev => [...prev, {
-            id,
-            title: 'New Item',
-            description: 'Click to edit this item',
-            status: 'active',
-            createdAt: new Date().toISOString(),
-        }]);
     };
 
-    const removeItem = (id) => {
-        setItems(prev => prev.filter(item => item.id !== id));
-    };
-
-    if (items.length === 0) {
-        return (
-            <div style={{ padding: '2rem' }}>
-                <h2 style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '1.5rem' }}>
-                    ${displayName}
-                </h2>
-                <EmptyState
-                    message="No items yet"
-                    actionLabel="Add your first item"
-                    onAction={addItem}
-                />
-            </div>
-        );
-    }
+    const addItem = () => persist([...(items || []), {
+        id: Date.now().toString(36),
+        title: 'New item',
+        description: 'Edit this item in your own code',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+    }]);
+    const removeItem = (id) => persist(items.filter(i => i.id !== id));
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1000px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
-                    ${displayName}
-                </h2>
-                <button
-                    onClick={addItem}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        background: 'rgba(16,185,129,0.15)',
-                        color: 'rgba(16,185,129,0.9)',
-                        border: '1px solid rgba(16,185,129,0.3)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                    }}
-                >
-                    + Add Item
-                </button>
-            </div>
+        <Page
+            title="${displayName}"
+            actions={<button className="qx-btn qx-btn--primary qx-btn--sm" onClick={addItem} disabled={!items}>Add item</button>}
+        >
+            <ErrorBanner error={stored.error} onRetry={stored.reload} title="Could not load items" />
+            <ErrorBanner error={saveError} title="Could not save, change reverted" />
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: 16,
-            }}>
-                {items.map(item => (
-                    <GlassPanel key={item.id} style={{ padding: 16, position: 'relative' }}>
-                        <button
-                            onClick={() => removeItem(item.id)}
-                            style={{
-                                position: 'absolute',
-                                top: '0.5rem',
-                                right: '0.5rem',
-                                background: 'none',
-                                border: 'none',
-                                color: COLORS.subtleText,
-                                cursor: 'pointer',
-                                fontSize: '1rem',
-                                padding: 0,
-                            }}
-                        >
-                            ✕
-                        </button>
-                        <h4 style={{ color: COLORS.white, margin: '0 0 0.5rem' }}>
-                            {item.title}
-                        </h4>
-                        <p style={{ color: COLORS.dimText, fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
-                            {item.description}
-                        </p>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <GlassPill color={item.status === 'active' ? '#10b981' : '#6b7280'}>
-                                {item.status}
-                            </GlassPill>
-                            <span style={{ color: COLORS.subtleText, fontSize: '0.7rem' }}>
-                                {new Date(item.createdAt).toLocaleDateString()}
-                            </span>
+            {!items ? (stored.error ? null : <Spinner />) : items.length === 0 ? (
+                <EmptyState message="No items yet" actionLabel="Add your first item" onAction={addItem} />
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                    {items.map(item => (
+                        <div key={item.id} className="qx-card" style={{ padding: 16 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8 }}>
+                                <h4 style={{ margin: '0 0 8px' }}>{item.title}</h4>
+                                <button className="qx-btn qx-btn--ghost qx-btn--sm" onClick={() => removeItem(item.id)} aria-label={'Remove ' + item.title}>Remove</button>
+                            </div>
+                            <p style={{ margin: '0 0 8px' }}>{item.description}</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span className={item.status === 'active' ? 'qx-pill qx-pill--online qx-pill--sm' : 'qx-pill qx-pill--ghost qx-pill--sm'}>{item.status}</span>
+                                <span className="qx-hint qx-hint--sm">{new Date(item.createdAt).toLocaleDateString()}</span>
+                            </div>
                         </div>
-                    </GlassPanel>
-                ))}
-            </div>
-        </div>
+                    ))}
+                </div>
+            )}
+        </Page>
     );
 }

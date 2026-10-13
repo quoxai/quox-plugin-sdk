@@ -1,13 +1,18 @@
 /**
- * ${displayName} — Main View
- * Member cards row, task queue, shared context, quick actions, and AgentChatSidebar
- * pointed at the team orchestrator.
+ * ${displayName}: Main View
+ *
+ * Member cards, task queue, policies, shared context and a chat with the lead.
+ *
+ * Honest scope: the team (agents, personas, tools, policies) is declared in
+ * manifest.json and run by Quox plus YOUR backend. This sandboxed plugin is the
+ * UI for it: status from GET /team/status, tasks from GET /tasks, chat via
+ * POST /team/chat. Until a backend answers, you see the error and labelled sample data.
+ * Policy enforcement (VOLT, approval, budgets) must live in the backend.
  */
 
-const { React } = window.__quoxSharedDeps;
-const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
-const ORCHESTRATOR_ID = '${pluginName}-lead';
-const DISPLAY_NAME = '${displayName}';
+import { api } from '../lib/api';
+import useLoad from '../lib/useLoad';
+import { ErrorBanner, InfoBanner, Page, Spinner } from '../lib/ui';
 import MemberCard from '../components/MemberCard';
 import TaskQueue from '../components/TaskQueue';
 import SharedContextPanel from '../components/SharedContextPanel';
@@ -16,91 +21,52 @@ import AgentChat from '../components/AgentChat';
 import { MOCK_TEAM_STATUS, MOCK_TASKS } from '../data/mock';
 import { teamDefinition } from '../team/teamDef';
 
-// pluginApi is passed as a prop by the plugin sandbox.
-// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
-export default function MainView({ pluginApi }) {
-    const [teamStatus, setTeamStatus] = React.useState(MOCK_TEAM_STATUS);
-    const [tasks, setTasks] = React.useState(MOCK_TASKS);
+const { React } = window.__quoxSharedDeps;
+
+const SUGGESTIONS = ['Deploy latest to staging', 'Check all service health', 'View team metrics'];
+
+export default function MainView() {
+    const team = useLoad(async () => {
+        const [status, tasks] = await Promise.all([api('/team/status'), api('/tasks')]);
+        return { status, tasks: tasks.tasks || [] };
+    });
     const [showContext, setShowContext] = React.useState(false);
-    const [collapsed, setCollapsed] = React.useState(false);
+
+    const status = team.data ? team.data.status : (team.error ? MOCK_TEAM_STATUS : null);
+    const tasks = team.data ? team.data.tasks : (team.error ? MOCK_TASKS : []);
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: collapsed ? '1fr 48px' : '1fr 340px', height: '100%', overflow: 'hidden' }}>
-            {/* Main content pane */}
-            <div style={{ overflowY: 'auto', padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h2 style={{ color: COLORS.white, margin: 0, fontFamily: F }}>
-                        ${displayName} Team
-                    </h2>
-                    <button
-                        onClick={() => setShowContext(!showContext)}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            background: 'rgba(56,189,248,0.15)',
-                            color: 'rgba(56,189,248,0.9)',
-                            border: '1px solid rgba(56,189,248,0.3)',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                        }}
-                    >
-                        {showContext ? 'Hide Context' : 'Shared Context'}
-                    </button>
+        <Page
+            title="${displayName} team"
+            maxWidth={1200}
+            actions={
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="qx-btn qx-btn--sm" onClick={() => setShowContext(!showContext)}>{showContext ? 'Hide context' : 'Shared context'}</button>
+                    <button className="qx-btn qx-btn--sm" onClick={team.reload}>Refresh</button>
                 </div>
+            }
+        >
+            <ErrorBanner error={team.error} onRetry={team.reload} title="Team backend unavailable" />
+            {team.error && <InfoBanner>Showing sample data. Build /team/status and /tasks in your plugin backend to replace it.</InfoBanner>}
 
-                {/* Policy Badges */}
-                <PolicyBadges policies={teamDefinition.policies} />
+            {!status ? <Spinner /> : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 16, alignItems: 'start' }}>
+                    <div>
+                        <PolicyBadges policies={teamDefinition.policies} />
 
-                {/* Member Cards Row */}
-                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
-                    Team Members
-                </h3>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                    gap: 16,
-                    marginBottom: 24,
-                }}>
-                    {teamStatus.members.map(member => (
-                        <MemberCard key={member.id} member={member} />
-                    ))}
+                        <div className="qx-section-title" style={{ marginTop: 24 }}>Team members</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+                            {status.members.map(m => <MemberCard key={m.id} member={m} />)}
+                        </div>
+
+                        <div className="qx-section-title" style={{ marginTop: 24 }}>Task queue</div>
+                        <TaskQueue tasks={tasks} />
+
+                        {showContext && <SharedContextPanel context={teamDefinition.sharedContext} onClose={() => setShowContext(false)} />}
+                    </div>
+                    <AgentChat agentName="${displayName} lead" suggestions={SUGGESTIONS} />
                 </div>
-
-                {/* Task Queue */}
-                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
-                    Task Queue
-                </h3>
-                <TaskQueue tasks={tasks} />
-
-                {/* Quick Actions */}
-                <h3 style={{ color: COLORS.dimText, margin: '1.5rem 0 1rem', fontSize: '1rem' }}>
-                    Quick Actions
-                </h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {['Deploy latest to staging', 'Check all service health', 'View team metrics', 'Create incident report'].map((action, i) => (
-                        <GlassPill key={i} style={{ cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
-                            {action}
-                        </GlassPill>
-                    ))}
-                </div>
-
-                {showContext && (
-                    <SharedContextPanel
-                        context={teamDefinition.sharedContext}
-                        onClose={() => setShowContext(false)}
-                    />
-                )}
-            </div>
-
-            {/* Agent Chat Sidebar — orchestrator */}
-            <AgentChat
-                agentId={ORCHESTRATOR_ID}
-                agentName={DISPLAY_NAME + ' Lead'}
-                agentColor='#38bdf8'
-                suggestions={['Deploy latest to staging', 'Check all service health', 'View team metrics', 'Create incident report']}
-                collapsed={collapsed}
-                onToggle={() => setCollapsed(c => !c)}
-            />
-        </div>
+            )}
+        </Page>
     );
 }

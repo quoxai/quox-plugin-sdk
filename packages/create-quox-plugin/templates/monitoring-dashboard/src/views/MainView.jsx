@@ -1,79 +1,66 @@
 /**
- * ${displayName} — Main View
- * Displays service status table with polling.
+ * ${displayName}: Main View
+ *
+ * Service status table, refreshed every 60 seconds.
+ *
+ * Data path: this view calls YOUR plugin backend through getQuox().fetch('/status')
+ * (see the enterprise-extension template for a backend skeleton). A sandboxed
+ * plugin cannot call Grafana, Prometheus or any other service directly; the
+ * backend does that and returns JSON shaped like { services: [...] }.
+ * While no backend answers, the view shows an error and clearly labelled sample data.
  */
 
-const { React } = window.__quoxSharedDeps;
-const { GlassPanel, GlassPill, COLORS, M, F } = window.__quoxGlass;
-import { MOCK_SERVICES } from '../data/mock';
+import { api } from '../lib/api';
+import useLoad from '../lib/useLoad';
+import { ErrorBanner, InfoBanner, Page, Spinner } from '../lib/ui';
 import usePolling from '../hooks/usePolling';
+import { MOCK_SERVICES } from '../data/mock';
 
-const STATUS_COLORS = {
-    healthy: '#10b981',
-    degraded: '#f59e0b',
-    down: '#ef4444',
+const { React } = window.__quoxSharedDeps;
+
+const STATUS_PILL = {
+    healthy: 'qx-pill qx-pill--online',
+    degraded: 'qx-pill qx-pill--degraded',
+    down: 'qx-pill qx-pill--offline',
 };
 
-// pluginApi is passed as a prop by the plugin sandbox.
-// Alternatively, use: const pluginApi = window.__quoxPluginApi?.['${pluginName}'];
-export default function MainView({ pluginApi }) {
-    const [services, setServices] = React.useState(MOCK_SERVICES);
+export default function MainView() {
+    const status = useLoad(() => api('/status'));
+    usePolling(status.reload, 60000);
 
-    // Poll for status updates every 60 seconds
-    usePolling(() => {
-        // Replace with real API call: pluginApi.fetch('/api/status')
-        setServices(prev => prev.map(s => ({
-            ...s,
-            lastCheck: new Date().toISOString(),
-        })));
-    }, 60000);
+    const live = status.data && Array.isArray(status.data.services);
+    const services = live ? status.data.services : (status.error ? MOCK_SERVICES : []);
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1000px' }}>
-            <h2 style={{ color: COLORS.white, marginBottom: 24, fontFamily: F }}>
-                ${displayName}
-            </h2>
+        <Page
+            title="${displayName}"
+            actions={<button className="qx-btn qx-btn--sm" onClick={status.reload}>Refresh</button>}
+        >
+            <ErrorBanner error={status.error} onRetry={status.reload} title="Status backend unavailable" />
+            {status.error && <InfoBanner>Showing sample data. Build the /status route in your plugin backend to replace it.</InfoBanner>}
 
-            <GlassPanel>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        {['Service', 'Status', 'Response', 'Uptime', 'Last Check'].map(h => (
-                            <th key={h} style={{
-                                padding: '0.75rem',
-                                textAlign: 'left',
-                                color: COLORS.subtleText,
-                                fontWeight: 500,
-                                fontSize: '0.85rem',
-                            }}>{h}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {services.map(service => (
-                        <tr key={service.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem', color: COLORS.white }}>
-                                {service.name}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>
-                                <GlassPill color={STATUS_COLORS[service.status]}>
-                                    {service.status}
-                                </GlassPill>
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>
-                                {service.responseMs}ms
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.dimText }}>
-                                {service.uptimePct}%
-                            </td>
-                            <td style={{ padding: '0.75rem', color: COLORS.subtleText, fontSize: '0.85rem' }}>
-                                {new Date(service.lastCheck).toLocaleTimeString()}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            </GlassPanel>
-        </div>
+            {status.loading && !status.data && !status.error ? <Spinner /> : (
+                <div className="qx-card" style={{ padding: 8 }}>
+                    <table className="qx-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th><th>Status</th><th>Response</th><th>Uptime</th><th>Last check</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {services.map(s => (
+                                <tr key={s.id}>
+                                    <td>{s.name}</td>
+                                    <td><span className={STATUS_PILL[s.status] || 'qx-pill'}>{s.status}</span></td>
+                                    <td className="qx-mono">{s.responseMs}ms</td>
+                                    <td className="qx-mono">{s.uptimePct}%</td>
+                                    <td>{new Date(s.lastCheck).toLocaleTimeString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </Page>
     );
 }

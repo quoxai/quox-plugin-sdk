@@ -1,155 +1,67 @@
 # Plugin Templates
 
-The scaffolder provides 6 archetype-based templates, each pre-wired with the QuoxCORE platform features that archetype needs.
+`create-quox-plugin` ships 8 templates. All of them target the **community plugin sandbox**: the plugin runs in an isolated frame with no network of its own, talks to Quox only through `getQuox()` from `quox-plugin-sdk`, and is styled with the `qx-*` design-system classes. None of them use host-only globals, so a scaffolded plugin renders the first time it is installed.
 
-## Template Comparison
+## Template comparison
 
-| Template | Use Case | Permissions | Platform Features |
-|----------|----------|-------------|-------------------|
-| `basic` | Hello world, learning | sidebar, storage, notifications | Sidebar entry |
-| `monitoring-dashboard` | Service monitoring (Grafana pattern) | + network | Vault config, NOC quick actions, polling, status badges |
-| `fleet-management` | Host/container management (Docker Fleet) | + network, aee, tools | Vault credentials, safety gates, AEE audit, agent tools, kill switch |
-| `service-bridge` | Third-party integration (GitHub pattern) | + network, aee, tools, memory | OAuth vault, specialist agent, tiered features, marketing metadata |
-| `ui-feature` | Client-side tool (Action Tracker) | sidebar, storage, notifications | Plugin storage, config panel, empty state, dark theme |
-| `enterprise-extension` | Multi-tier with backend (Advanced Memory) | + network, memory, aee | Memory API, AOCL events, Docker backend, usage meters, upgrade gates |
-| `specialist-agent` | Specialist agent with tools and persona (Security Scanner) | + network, aee, tools, memory | Agent definition, persona, 3 tools, inline chat, DEFCON, budget, autonomy |
-| `agentic-team` | Multi-agent team with orchestrator (DevOps Team) | + network, aee, tools, memory | Team definition, 4 agents, 4 personas, 8 tools, policies, task queue |
+| Template | Use case | Manifest permissions | What the view does |
+|----------|----------|----------------------|--------------------|
+| `basic` | Hello world, learning the sandbox | sidebar, storage, notifications | `getUser()` plus a counter in plugin storage |
+| `monitoring-dashboard` | Service status | + network | Polls `GET /status` on your backend, status table |
+| `fleet-management` | Hosts with destructive actions | + network, aee, tools | Host table, confirm modal, `aee.emit` audit, `POST /hosts/<id>/<action>` |
+| `service-bridge` | Third-party integration | + network, aee, tools, memory | Items and metrics from your backend, memory panel |
+| `ui-feature` | Client-side tool | sidebar, storage, notifications | Card grid persisted in plugin storage |
+| `enterprise-extension` | Tiers, usage, backend | + network, memory, aee | Usage meters, memory search, upgrade gates, backend skeleton |
+| `specialist-agent` | Agent with tools and persona | + network, aee, tools, memory | Agent status, tool runner, ask-the-agent panel |
+| `agentic-team` | Multi-agent team | + network, aee, tools, memory | Members, policies, task queue, chat with the lead |
 
-## When to Use Each Template
+## What every template gives you
 
-### basic
+- `src/index.jsx` calls `registerPlugin` from `quox-plugin-sdk`.
+- `src/lib/` helpers: `api.js` (wrapper over `getQuox().fetch` and `storage`), `useLoad.js` (load state hook), `ui.jsx` (error banner, spinner, page frame), `useConfig.js` and `ConfigForm.jsx` (settings).
+- Every view shows an **error state** when an RPC fails. Nothing renders blank.
+- `README.md` in the project explaining build, validate, sign and install.
+- `.gitignore` covering `node_modules/`, `dist/` and `.keys/`.
+- `.claude/skills/quox-plugin/` (the Claude skill), unless you pass `--no-skill`.
 
-Start here if you are new to QuoxCORE plugin development. Generates a minimal sidebar plugin with a single view. No backend, no integrations — just a React component registered with the platform.
+## Honest scope: what needs a backend
 
-### monitoring-dashboard
+A sandboxed plugin cannot reach the network, hosts, a bastion, a vault or a model. Where a template's purpose depends on one of those, it calls **your plugin's own backend** through `getQuox().fetch('/some/path')` (paths are relative to `/collector/api/v1/plugins/<id>/`). The template says so in the header comment of `MainView.jsx`, and shows labelled sample data when no backend answers.
 
-Choose this when your plugin connects to an external monitoring service and displays status data. The template includes a polling hook, status table with coloured badges, and NOC quick actions. Modelled on Grafana, Prometheus, and Uptime Kuma plugins.
+- `monitoring-dashboard`, `service-bridge`: your backend talks to the third-party service and holds its credentials.
+- `fleet-management`: your backend performs host actions. Governed fleet access and vault credentials belong to official plugins, not the sandbox.
+- `specialist-agent`, `agentic-team`: the agent or team is declared in `manifest.json` and run by Quox and your backend. The plugin is the UI for it. The host's own chat surface cannot be embedded, so the chat panel calls your backend.
+- `enterprise-extension`: includes `backend/` (Express) and a `Dockerfile` as the starting point.
 
-### fleet-management
+## Styling
 
-Choose this when your plugin manages infrastructure resources (hosts, containers, VMs) and needs destructive action safety gates. Includes a host table, confirmation modal, AEE audit trail, and kill switch. Modelled on Docker Fleet, Wazuh, and Proxmox plugins.
+Use `qx-*` classes (`qx-card`, `qx-btn`, `qx-pill`, `qx-table`, `qx-input`, `qx-banner`, `qx-modal`, `qx-progress`, and so on). The build includes the design-system CSS in `plugin.css`; host stylesheets are not available inside the frame. Rules: white text on dark, no grey text, buttons always use `qx-btn` (never bare transparent), and keep inline styles to layout.
 
-### service-bridge
+## Scaffolder flags
 
-Choose this when integrating a third-party API or service. Includes OAuth configuration, a specialist agent sidebar, tiered feature comparison, and marketing metadata for the marketplace. Modelled on GitHub and LinkedIn plugins.
+| Flag | Effect |
+|------|--------|
+| `--template <name>` | Pick a template without the menu |
+| `--from-mcp "<cmd>"` / `--from-mcp-json <file>` | Scaffold a specialist-agent plugin from an MCP server's tool list |
+| `--local-sdk <path>` | Use `file:` deps from a local `quox-plugin-sdk` checkout (monorepo development only) |
+| `--no-skill` | Do not write the Claude skill |
+| `--non-interactive` | Use defaults for anything not passed as a flag |
 
-### ui-feature
+## Generated files by template
 
-Choose this for client-side productivity tools that persist state locally. Includes plugin storage, a config panel, empty state component, and card grid layout. No backend needed. Modelled on Action Tracker, OpsDeck, and Prompts Library plugins.
+Common to all: `manifest.json`, `package.json`, `vite.config.js`, `README.md`, `.gitignore`, `src/index.jsx`, `src/views/MainView.jsx`, `src/lib/*`.
 
-### enterprise-extension
-
-Choose this for complex plugins that need a backend service, multi-tier licensing, and platform integrations. Includes a Docker backend, usage meters, upgrade gates, memory API integration, and AOCL event emission. Modelled on Advanced Memory and AOCL Compliance Suite plugins.
-
-### specialist-agent
-
-Choose this when building a plugin that registers a specialist agent with the platform. The agent has its own persona, tools (Claude tool_use format), autonomy settings, DEFCON level, and budget constraints. Includes an inline chat panel for direct agent interaction, tool cards with parameter forms, and quick action chips. Modelled on FORGE, NETWATCH, and QUOXCODE built-in agents.
-
-### agentic-team
-
-Choose this when building a plugin that provides a coordinated team of agents working together. Includes a team definition (matching teams/*.json shape), an orchestrator agent, specialist and analyst members, shared context, policies (VOLT, approval, checkpointing), and a task queue. Modelled on secops, chief-small, and software-dev built-in teams.
-
-## Generated Files
-
-### Common to All Templates
-
-| File | Purpose |
-|------|---------|
-| `manifest.json` | Plugin metadata, permissions, routes, config |
-| `src/index.jsx` | Entry point — registers routes, sidebar, hooks |
-| `src/views/MainView.jsx` | Primary view component |
-| `vite.config.js` | Build configuration |
-| `package.json` | Dependencies and scripts |
-| `.gitignore` | Excludes node_modules, dist, .quoxplugin |
-
-### Template-Specific Files
-
-| Template | Additional Files |
-|----------|-----------------|
-| monitoring-dashboard | `src/views/SettingsPanel.jsx`, `src/hooks/usePolling.js`, `src/data/mock.js` |
-| fleet-management | `src/views/SettingsPanel.jsx`, `src/components/ConfirmModal.jsx`, `src/data/mock.js` |
-| service-bridge | `src/views/SettingsPanel.jsx`, `src/components/AgentSidebar.jsx`, `src/data/mock.js` |
-| ui-feature | `src/views/SettingsPanel.jsx`, `src/components/EmptyState.jsx`, `src/data/mock.js` |
-| enterprise-extension | `src/views/SettingsPanel.jsx`, `src/components/UsageMeter.jsx`, `src/components/UpgradeGate.jsx`, `src/data/mock.js`, `backend/server.js`, `backend/package.json`, `Dockerfile` |
-| specialist-agent | `src/agent/agentDef.js`, `src/agent/agentPersona.js`, `src/agent/tools.js`, `src/views/SettingsPanel.jsx`, `src/components/AgentStatusCard.jsx`, `src/components/ToolCard.jsx`, `src/components/AgentChat.jsx`, `src/data/mock.js` |
-| agentic-team | `src/team/teamDef.js`, `src/team/agents.js`, `src/team/personas.js`, `src/team/tools.js`, `src/team/policies.js`, `src/views/SettingsPanel.jsx`, `src/components/MemberCard.jsx`, `src/components/TaskQueue.jsx`, `src/components/SharedContextPanel.jsx`, `src/components/PolicyBadges.jsx`, `src/data/mock.js` |
-
-## Platform Features Matrix
-
-| Feature | basic | monitoring | fleet | bridge | ui | enterprise | agent | team |
-|---------|-------|-----------|-------|--------|-----|-----------|-------|------|
-| Sidebar entry | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Settings panel | — | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Config schema | — | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Plugin storage | — | — | — | — | Yes | — | — | — |
-| Data polling | — | Yes | — | — | — | — | — | — |
-| NOC integration | — | Yes | — | — | — | — | — | — |
-| Safety gates | — | — | Yes | Yes | — | — | Yes | Yes |
-| AEE audit | — | — | Yes | Yes | — | Yes | Yes | Yes |
-| Agent tools | — | — | Yes | Yes | — | — | Yes | Yes |
-| Specialist agent | — | — | — | Yes | — | — | Yes | — |
-| Agent definition | — | — | — | — | — | — | Yes | Yes |
-| Agent persona | — | — | — | — | — | — | Yes | Yes |
-| Tool definitions | — | — | — | — | — | — | Yes | Yes |
-| Team definition | — | — | — | — | — | — | — | Yes |
-| Team policies | — | — | — | — | — | — | — | Yes |
-| Inline chat | — | — | — | — | — | — | Yes | — |
-| Task queue | — | — | — | — | — | — | — | Yes |
-| DEFCON support | — | — | — | — | — | — | Yes | Yes |
-| Autonomy/budget | — | — | — | — | — | — | Yes | Yes |
-| Memory API | — | — | — | Yes | — | Yes | Yes | Yes |
-| Tiered comparison | — | — | — | Yes | Yes | Yes | — | — |
-| Usage meters | — | — | — | — | — | Yes | — | — |
-| Upgrade gates | — | — | — | — | — | Yes | — | — |
-| Backend container | — | — | — | — | — | Yes | — | — |
-| Marketing metadata | — | — | — | Yes | — | — | — | — |
-
-## Scaffolding
-
-```bash
-# Interactive mode
-node packages/create-quox-plugin/bin/create.js my-plugin
-
-# Direct template selection
-node packages/create-quox-plugin/bin/create.js my-plugin --template monitoring-dashboard
-```
-
-## Migration modes
-
-Migration modes are not a template you pick from the list above; they are a CLI flag that scaffolds the `specialist-agent` template automatically, with the agent's persona and tools seeded from a real MCP (Model Context Protocol) server instead of the hardcoded security-scanner defaults.
-
-```bash
-# Live: spawn a stdio MCP server, introspect its tools, scaffold the agent
-node packages/create-quox-plugin/bin/create.js my-plugin --from-mcp "node my-mcp-server.js"
-
-# Offline: read a previously saved tools/list result instead of spawning a server
-node packages/create-quox-plugin/bin/create.js my-plugin --from-mcp-json ./tools-list.json
-```
-
-`--from-mcp` spawns the given command as a child process and speaks the MCP protocol to it directly: JSON-RPC 2.0, newline-delimited, over stdin/stdout. It performs the `initialize` handshake, sends the `notifications/initialized` notification, calls `tools/list`, then closes the process. There is a 15 second timeout; if the server does not respond in time, the CLI exits with a clear error rather than hanging.
-
-`--from-mcp-json` skips the live handshake entirely and reads a saved `tools/list` result from disk, either `{ "tools": [...], "serverInfo": { "name": "..." } }` or a plain array of tool objects.
-
-Each MCP tool becomes:
-
-- an entry in `manifest.json`'s `agentDefinition.tools` and `toolDefinitions` (Claude tool_use format)
-- an entry in the generated `src/data/mcp-tools.js` descriptor module
-
-Tool names are normalized for LLM safety (dots and dashes become underscores, following the existing `plugin_<pluginName>_<tool>` naming convention); the original MCP tool name is kept alongside as `mcpToolName` / `canonicalName` for traceability.
-
-The generated `manifest.json` also gets an `mcpProvenance` block (source command, server name, tool count, generation timestamp), and the scaffolded `README.md` documents the same provenance plus one important limit: **this plugin does not execute MCP tools live**. The browser plugin sandbox has no stdio process access, so the tool list is display and routing metadata only. Live execution is wired through `quox powers`, QuoxCORE's server-side tool execution layer, not the plugin itself.
-
-See the [Convert an MCP Server](tutorials/convert-mcp-server.md) walkthrough (draft).
+| Template | Additional files |
+|----------|------------------|
+| `basic` | none |
+| `monitoring-dashboard` | `views/SettingsPanel.jsx`, `hooks/usePolling.js`, `data/mock.js` |
+| `fleet-management` | `views/SettingsPanel.jsx`, `components/ConfirmModal.jsx`, `data/mock.js` |
+| `service-bridge` | `views/SettingsPanel.jsx`, `components/AgentSidebar.jsx` (memory panel), `data/mock.js` |
+| `ui-feature` | `views/SettingsPanel.jsx`, `components/EmptyState.jsx`, `data/mock.js` |
+| `enterprise-extension` | `views/SettingsPanel.jsx`, `components/UsageMeter.jsx`, `components/UpgradeGate.jsx`, `data/mock.js`, `backend/`, `Dockerfile` |
+| `specialist-agent` | `agent/{agentDef,agentPersona,tools}.js`, `views/SettingsPanel.jsx`, `components/{AgentStatusCard,ToolCard,AgentChat}.jsx`, `data/mock.js` |
+| `agentic-team` | `team/{teamDef,agents,personas,tools,policies}.js`, `views/SettingsPanel.jsx`, `components/{MemberCard,TaskQueue,SharedContextPanel,PolicyBadges,AgentChat}.jsx`, `data/mock.js` |
 
 ## Tutorials
 
-The basic template is covered by the [Getting Started](getting-started.md) guide. Each advanced template has a dedicated tutorial:
-
-- [Building a Monitoring Dashboard Plugin](tutorials/monitoring-dashboard.md)
-- [Building a Fleet Management Plugin](tutorials/fleet-management.md)
-- [Integrating a Third-Party Service](tutorials/service-bridge.md)
-- [Building a UI Feature Plugin](tutorials/ui-feature.md)
-- [Building an Enterprise Plugin](tutorials/enterprise-extension.md)
-- [Building a Specialist Agent Plugin](tutorials/specialist-agent.md)
-- [Building an Agentic Team Plugin](tutorials/agentic-team.md)
-- [Convert an MCP Server](tutorials/convert-mcp-server.md) (draft, migration mode)
+[basic](./tutorials/basic.md), [monitoring-dashboard](./tutorials/monitoring-dashboard.md), [fleet-management](./tutorials/fleet-management.md), [service-bridge](./tutorials/service-bridge.md), [ui-feature](./tutorials/ui-feature.md), [enterprise-extension](./tutorials/enterprise-extension.md), [specialist-agent](./tutorials/specialist-agent.md), [agentic-team](./tutorials/agentic-team.md), [convert an MCP server](./tutorials/convert-mcp-server.md).

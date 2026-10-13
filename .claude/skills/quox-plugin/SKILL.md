@@ -1,182 +1,103 @@
 ---
 skill: quox-plugin
-description: Help developers build QuoxCORE plugins — scaffold, manifest editing, debugging, extending, and reviewing
+description: Help developers build QuoxCORE community plugins (sandboxed): scaffold, manifest, debug, extend, review, sign
 arguments: scaffold | manifest | debug | extend | review
 ---
-<!-- Canonical version of this skill's debug/manifest/review content now lives in quoxpert-plugin-sdk (github.com/quoxai/quoxpert, plugin/skills/quoxpert-plugin-sdk/SKILL.md): that's the externally-distributed copy. Update there first, then sync back here if needed. -->
 
-# QuoxCORE Plugin Development Skill
+# QuoxCORE community plugin skill
 
-You are helping a developer build a QuoxCORE third-party plugin. Use the mode specified in the argument to guide your response.
+You are helping a developer build a QuoxCORE community plugin. Community plugins run in a
+sandboxed, opaque-origin iframe. Know the sandbox first; most bugs are someone assuming a host
+API that is not there.
+
+## The sandbox model (ground truth)
+
+Inside the frame a plugin has ONLY:
+- `window.__quoxSharedDeps`: React, ReactDOM, ReactRouterDOM, ReactJSXRuntime.
+- `window.quox` (use `getQuox()` from `quox-plugin-sdk`), every method returns a Promise:
+  `storage.get/set/remove/keys/getAll`, `fetch(path, {method, headers, body})` (path is relative to
+  your plugin's own backend namespace; absolute URLs are refused), `memory.save/search`,
+  `aee.emit(intent, payload)`, `navigate(path)`, `notify(message, type)`, `getUser()`.
+- Only your own `plugin.css` is injected. Host stylesheets are not present, so `qx-*` classes work
+  only because the build includes the design-system CSS.
+
+There is NO direct network (CSP `connect-src 'none'`: no fetch, XHR, WebSocket, EventSource), no
+host contexts, no host component library. Anything that needs a third-party service or a secret
+belongs in the plugin's own backend, reached through `getQuox().fetch`.
+
+Components are mounted with NO props. Get the API with `getQuox()` or `usePluginApi()`.
+Registration is `registerPlugin(pluginId, { routes, sidebar })` from `quox-plugin-sdk`.
 
 ## Mode: scaffold
 
-Guide the developer through template selection and scaffolding.
+Templates (`npm create quox-plugin@latest <name> -- --template <template>`):
 
-**Templates available (run `node packages/create-quox-plugin/bin/create.js`):**
+| Template | Use when |
+|----------|----------|
+| `basic` | Hello world, learning the sandbox |
+| `monitoring-dashboard` | Show status of a service your backend polls |
+| `fleet-management` | Host table with confirm-before-act safety gates and AEE audit |
+| `service-bridge` | Integrate a third-party API through your backend, plus memory |
+| `ui-feature` | Client-side tool backed by plugin storage |
+| `enterprise-extension` | Tiered features, usage meters, memory search, backend skeleton |
+| `specialist-agent` | Agent definition, persona, tools; status and tool runner UI |
+| `agentic-team` | Team of agents with policies, task queue, shared context |
 
-| Template | Use When | Platform Features |
-|----------|----------|-------------------|
-| `basic` | Hello world, learning | Sidebar only |
-| `monitoring-dashboard` | Connecting to a monitoring service (Grafana, Prometheus, Uptime Kuma) | Vault config, NOC quick actions, polling, license gate, status badges |
-| `fleet-management` | Managing hosts/containers with destructive actions | Vault credentials, safety gates, AEE audit, agent tools, kill switch |
-| `service-bridge` | Integrating a third-party API/service | OAuth vault, specialist agent, agent tools, tiered features, memory, marketing metadata |
-| `ui-feature` | Client-side productivity tool (tracker, library, notes) | Plugin storage, config panel, license gate, empty state, dark theme |
-| `enterprise-extension` | Complex multi-tier plugin with backend | Memory API, AOCL events, Docker backend, multi-tier limits, usage meters, upgrade gates |
-| `specialist-agent` | Specialist agent with tools and persona (Security Scanner) | Agent definition (agentRegistry shape), persona (assistants.js shape), 3 tools (tool_use format), inline chat, DEFCON, autonomy, budget, schedule |
-| `agentic-team` | Multi-agent team with orchestrator (DevOps Team) | Team definition (teams/*.json shape), 4 agents, 4 personas, 8 tools, policies (VOLT, approval, checkpoint), task queue, shared context |
-
-**Procedure:**
-1. Ask what the plugin does (one sentence)
-2. Recommend the best template based on the description
-3. Run the scaffolder: `node packages/create-quox-plugin/bin/create.js <name> --template <template>`
-4. Walk through the generated files, explaining each one
-5. Suggest first customisation steps
+Procedure: ask what the plugin does, recommend a template, scaffold, walk through the generated
+files, suggest first changes. Be honest about what the sandbox cannot do (see the template's
+header comments).
 
 ## Mode: manifest
 
-Help edit the plugin manifest. Reference all available fields:
-
-**Core fields:** id, name, version, author, description, category, license, permissions, sidebar, routes, minQuoxVersion
-
-**Config:** `configSchema` — Record of field name to `{ type, label, description, default, premium?, enterprise? }`. Types: string, number, boolean, password, select, url.
-
-**Safety:** `safety` — `{ destructiveActions[], requiresApproval[], aeeRequired, killSwitchEnabled }`. Required for any plugin that modifies infrastructure.
-
-**NOC:** `nocIntegration` — `{ tab: { label, icon }, quickActions: [{ id, label, icon, description, severity, prompt }] }`. Adds a tab to the NOC dashboard.
-
-**Agent:** `specialist` — `{ name, description, capabilities[] }`. Registers a specialist agent.
-
-**Tiers:** `comparison` — Record of tier name to Record of feature name to value. `limits` — Record of tier name to Record of limit name to value.
-
-**Capabilities:** `capabilities` — `{ aeeIntents[], toolAccess? }`. Declares AEE intents the plugin emits.
-
-**Marketing:** `heroGradient`, `accentColor`, `badge`, `testimonials[]`, `marketingPoints[]`.
-
-**Backend:** `backend` — `{ image, healthPath, port }`. Only for plugins with a Docker backend service.
-
-**Permissions reference:**
+Core fields: id, name, version, author, description, category, license, permissions, sidebar,
+routes, minQuoxVersion. Optional: configSchema, safety, nocIntegration, specialist, capabilities,
+comparison, limits, backend. Run `npm run validate` after every edit.
 
 | Permission | Grants |
 |-----------|--------|
-| `sidebar` | Sidebar entry + route registration |
-| `storage` | localStorage-backed key-value store (~5MB) |
-| `notifications` | Toast notifications via pluginApi.notify() |
-| `network` | HTTP requests via pluginApi.fetch() (proxied through collector) |
-| `memory` | Memory save/search via pluginApi.memory |
-| `aee` | AEE envelope emission via pluginApi.aee.emit() |
-| `tools` | Register agent tools for the specialist agent |
-
-**Procedure:**
-1. Read the current manifest.json
-2. Ask what the developer wants to add
-3. Show the exact JSON to add/modify
-4. Verify permissions match the features being added
+| `sidebar` | Sidebar entry and routes |
+| `storage` | `getQuox().storage` |
+| `notifications` | `getQuox().notify` |
+| `network` | `getQuox().fetch` to your own backend |
+| `memory` | `getQuox().memory` |
+| `aee` | `getQuox().aee.emit` |
+| `tools` | Register agent tools |
 
 ## Mode: debug
 
-Common issues and fixes:
-
-**Dark theme / invisible elements:**
-- Never use `stroke="currentColor"` or `fill="currentColor"` in SVGs — inherited colour is invisible on dark backgrounds
-- Use explicit colours: `style={{ stroke: 'rgba(255,255,255,0.8)' }}`
-- If SVG still broken after one attempt, use Unicode: `✕`, `⚡`, `▶`
-- Minimum opacity on dark backgrounds: 0.6 for `rgba(255,255,255,...)`
-- Prefer 0.7-0.85 for default state, 0.9-1.0 for hover
-
-**Missing permissions:**
-- Plugin storage not working → add `storage` to permissions array
-- fetch() failing → add `network` to permissions
-- memory.save() failing → add `memory` to permissions
-- aee.emit() failing → add `aee` to permissions
-
-**Build failures:**
-- "adm-zip not found" → `npm install -D adm-zip`
-- "Cannot find module 'quox-plugin-vite'" → check package.json devDependencies
-- ZIP not created → ensure manifest.json exists at project root
-- Plugin not loading → check pluginId matches manifest.id exactly
-
-**Storage not persisting:**
-- Plugin storage is namespaced by pluginId — if ID changes, data is lost
-- Storage backed by localStorage (~5MB limit)
-- Always check `pluginApi?.storage` before using (may be null during init)
-
-**Procedure:**
-1. Ask what specific issue the developer is seeing
-2. Check the most likely cause from the list above
-3. Read the relevant files to confirm
-4. Apply the fix
+- "Plugin error: ... is not available in isolated plugins": code touched a host-only global
+  (a host component library or context). Replace with `qx-*` classes and `getQuox()`.
+- Blank view: an RPC rejected and nothing rendered the error. Show an error banner for every call.
+- Unstyled UI: the class is not in the design-system CSS; check the name exists.
+- Storage/fetch/memory/aee rejects: add the matching permission to `manifest.json`.
+- `fetch` refused: path must be relative to your plugin namespace, no `..`, allowed methods only.
+- Install says unsigned or untrusted: run `npm run validate`, then sign (below).
 
 ## Mode: extend
 
-Guide adding new capabilities to an existing plugin:
-
-**Add a new view:**
-1. Create `src/views/NewView.jsx` with the component
-2. Add route to manifest.json `routes` field
-3. Import and register in `src/index.jsx`
-4. Optionally add sidebar entry
-
-**Add a backend:**
-1. Create `backend/server.js` with Express + /health + /api routes
-2. Create `backend/package.json` with express dependency
-3. Create `Dockerfile` (node:20-alpine based)
-4. Add `backend` block to manifest.json
-5. Add `network` to permissions
-
-**Add agent tools:**
-1. Add `specialist` block to manifest.json
-2. Add `tools` to permissions
-3. Register tools via backend admin API: POST /api/v1/admin/plugins/:id/tools
-4. Tool naming convention: `plugin_{pluginId}_{tool_name}`
-
-**Add AEE events:**
-1. Add `aee` to permissions
-2. Add `capabilities.aeeIntents` array to manifest
-3. Call `pluginApi.aee.emit(intent, payload)` at the appropriate points
-4. Intent naming: `{pluginId}.{entity}.{action}`
-
-**Add memory integration:**
-1. Add `memory` to permissions
-2. Save: `await pluginApi.memory.save({ type: 'fact', content: '...', tags: [] })`
-3. Search: `await pluginApi.memory.search(query, limit)`
-
-**Add settings panel:**
-1. Create `src/views/SettingsPanel.jsx`
-2. Add route to manifest.json
-3. Add `configSchema` to manifest with field definitions
-4. Use `pluginApi.config.get()` and `pluginApi.config.save()`
-
-**Procedure:**
-1. Ask what capability to add
-2. Read the current plugin files
-3. Implement step by step, verifying build after each change
+- New view: add `src/views/X.jsx`, a route in `manifest.json`, and in `registerPlugin` routes.
+- Backend: add `backend/server.js` (Express, `/health`), a Dockerfile, a `backend` block, `network`
+  permission. Secrets live there, not in plugin storage.
+- AEE: add `aee` permission and `capabilities.aeeIntents`; call `getQuox().aee.emit(intent, payload)`;
+  intent names are `{pluginId}.{entity}.{action}`.
+- Memory: `await getQuox().memory.save({ type: 'fact', content, tags })`, `memory.search(query, limit)`.
+- Tests: `import { createMockQuox, installMockQuox } from 'quox-plugin-sdk/testing'`.
 
 ## Mode: review
 
-Audit a plugin for completeness.
+1. Manifest complete; permissions match actual use; no over-requesting.
+2. No host-only globals, no raw network calls, no secrets in plugin storage.
+3. Every RPC has an error state; every view handles loading.
+4. Design: `qx-*` classes, white text on dark, buttons use `qx-btn` (never bare transparent), no grey text.
+5. `npm run validate` passes; `.keys/` is gitignored; the signed `dist/` is rebuilt after every change.
 
-**Checklist:**
-1. **Manifest completeness** — all required fields present, permissions match actual usage
-2. **configSchema validation** — every field has type, label, description; password fields for secrets
-3. **Safety block** — present if plugin has destructive actions; requiresApproval for dangerous ops
-4. **Permissions audit** — no over-requesting (don't request memory if not used); no under-requesting
-5. **Dark theme compliance** — no currentColor SVGs, no opacity below 0.6, all text uses rgba(255,255,255,...)
-6. **Build output** — manifest.json + plugin.esm.js in ZIP, under 100KB bundle / 5MB total
-7. **Plugin ID** — kebab-case, 3-64 chars, matches across manifest.id, index.jsx registration, and sidebar paths
-
-**Procedure:**
-1. Read manifest.json, src/index.jsx, and all view files
-2. Run through each checklist item
-3. Report findings with specific line numbers
-4. Suggest fixes for any issues found
-
-## Installation
-
-To install this skill for use with Claude Code:
+## Build, validate, sign, install
 
 ```bash
-cp -r .claude/skills/quox-plugin ~/.claude/skills/   # from a clone of quoxai/quox-plugin-sdk
+npm run build
+npm run validate
+npx quox-plugin keygen --out .keys     # once; keep .keys/ private
+npm run sign                           # writes dist/signature.json
 ```
 
-Then invoke with `/quox-plugin scaffold`, `/quox-plugin manifest`, etc.
+Then upload the built plugin from the Quox dashboard plugins page.

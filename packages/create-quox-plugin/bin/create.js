@@ -32,6 +32,14 @@ function renderTemplate(relPath, vars = {}) {
     return content;
 }
 
+const SKILL_ROOT = path.join(__dirname, '..', 'skill', 'quox-plugin');
+const SHARED_LIB_FILES = ['api.js', 'useLoad.js', 'ui.jsx', 'useConfig.js', 'ConfigForm.jsx'];
+
+function listSkillFiles() {
+    if (!fs.existsSync(SKILL_ROOT)) return [];
+    return fs.readdirSync(SKILL_ROOT).filter(f => fs.statSync(path.join(SKILL_ROOT, f)).isFile());
+}
+
 const CATEGORIES = ['Monitoring', 'Productivity', 'Communication', 'AI & Intelligence', 'Infrastructure', 'Compliance & Audit', 'Other'];
 
 const TEMPLATES = [
@@ -176,7 +184,7 @@ function generateManifest(pluginName, displayName, author, description, category
         base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools', 'memory'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
-            scanTarget: { type: 'string', label: 'Default Target', description: 'Default scan target (subnet or host)', default: '10.0.0.0/24' },
+            scanTarget: { type: 'string', label: 'Default Target', description: 'Default scan target (subnet or host)', default: '192.0.2.0/24' },
             defconLevel: { type: 'select', label: 'DEFCON Level', description: 'Agent alert level', default: 'AMBER', options: ['GREEN', 'AMBER', 'ORANGE', 'RED'] },
         };
         base.safety = {
@@ -797,60 +805,118 @@ function generateViteConfig(pluginName) {
     return renderTemplate('_shared/vite.config.js', { pluginName });
 }
 
+const SDK_RANGE = '^0.2.0';
+
 /**
- * The SDK packages are NOT published to npm yet (deferred to launch, Adam
- * 2026-07-03) — a registry semver would 404 on `npm install`. When the
- * scaffolder runs from a local SDK checkout (the only way it runs today),
- * point the deps at those packages via absolute file: paths. Absolute, not
- * relative: relative file: deps break the moment a project sits at a
- * different directory depth (star-alignment's original setup did exactly
- * that). Falls back to registry semvers once the packages are published.
+ * SDK dependency specs. Default is the registry range. `localSdk` (from the explicit
+ * --local-sdk flag) points at a checkout of quox-plugin-sdk and writes file: deps instead.
+ * Never auto-detected: a scaffold must not depend on where this script happens to live.
  */
-function resolveSdkDep(pkg) {
-    const local = path.resolve(__dirname, '..', '..', pkg);
-    if (fs.existsSync(path.join(local, 'package.json'))) {
-        return `file:${local}`;
-    }
-    return '^0.1.0';
+function resolveSdkDep(pkg, localSdk) {
+    if (localSdk) return `file:${path.join(localSdk, 'packages', pkg)}`;
+    return SDK_RANGE;
 }
 
-function generatePackageJson(pluginName) {
+function generatePackageJson(pluginName, localSdk = null) {
     return JSON.stringify({
         name: pluginName,
         version: '0.1.0',
         private: true,
+        type: 'module',
         scripts: {
             dev: 'vite',
             build: 'vite build',
-            validate: 'node -e "const m = require(\'./manifest.json\'); console.log(\'Manifest OK:\', m.id, m.version)"',
+            validate: 'quox-plugin validate',
+            sign: 'quox-plugin sign --key ./.keys/plugin-signing.pem',
+        },
+        dependencies: {
+            'quox-plugin-sdk': resolveSdkDep('quox-plugin-sdk', localSdk),
         },
         devDependencies: {
             '@vitejs/plugin-react': '^4.0.0',
-            'quox-plugin-vite': resolveSdkDep('quox-plugin-vite'),
-            'quox-plugin-sdk': resolveSdkDep('quox-plugin-sdk'),
+            'quox-plugin-vite': resolveSdkDep('quox-plugin-vite', localSdk),
             react: '^19.0.0',
             'react-dom': '^19.0.0',
             vite: '^7.0.0',
-            'adm-zip': '^0.5.10',
         },
     }, null, 2);
 }
 
+function generateReadme(pluginName, displayName, description) {
+    return `# ${displayName}
+
+${description}
+
+A QuoxCORE **community plugin**. It runs in a sandboxed frame: no direct network, no host
+components. It talks to Quox only through \`getQuox()\` from \`quox-plugin-sdk\` (storage, fetch to
+your own plugin backend, memory, AEE, notifications, user) and is styled with the \`qx-*\` design
+system classes. Read the header comment of \`src/views/MainView.jsx\` for what this template
+does and what needs a backend.
+
+## Develop
+
+\`\`\`bash
+npm install
+npm run dev        # dev preview with a mocked Quox host
+\`\`\`
+
+## Build, validate, sign
+
+\`\`\`bash
+npm run build      # writes dist/ (manifest.json, plugin bundle, plugin.css)
+npm run validate   # checks manifest.json and the built bundle, exit 1 on problems
+
+# One time: create a signing keypair. Keep .keys/ private (it is gitignored).
+npx quox-plugin keygen --out .keys
+
+npm run sign       # writes dist/signature.json using ./.keys/plugin-signing.pem
+\`\`\`
+
+Rebuild and sign again after every change; a stale signature will be rejected.
+
+## Install
+
+Upload the built plugin from the Quox dashboard plugins page (or your org's plugin install
+flow), then open it from the sidebar. Community plugins are shown with an "unverified" badge
+unless the signing key is one your org trusts.
+
+## Test
+
+\`\`\`js
+import { createMockQuox, installMockQuox } from 'quox-plugin-sdk/testing';
+\`\`\`
+
+\`createMockQuox\` is an in-memory stand-in for the host API, so views can be unit tested.
+`;
+}
+
 function generateGitignore() {
-    return renderTemplate('_shared/.gitignore');
+    // Shipped as _gitignore: npm strips .gitignore from published tarballs.
+    return renderTemplate('_shared/_gitignore');
 }
 
 // --- Template file map ---
 
-function getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData = null) {
+function getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData = null, opts = {}) {
     const manifest = generateManifest(pluginName, displayName, author, description, category, template, mcpData);
     const files = {
         'manifest.json': JSON.stringify(manifest, null, 2),
         'src/index.jsx': generateIndexJsx(pluginName, displayName, template),
         'vite.config.js': generateViteConfig(pluginName),
-        'package.json': generatePackageJson(pluginName),
+        'package.json': generatePackageJson(pluginName, opts.localSdk || null),
         '.gitignore': generateGitignore(),
+        'README.md': generateReadme(pluginName, displayName, description),
     };
+
+    // Shared helpers every template uses: RPC wrapper, load hook, UI atoms, settings form.
+    for (const lib of SHARED_LIB_FILES) {
+        files[`src/lib/${lib}`] = renderTemplate(`_shared/src/lib/${lib}`);
+    }
+    if (opts.skill !== false) {
+        for (const rel of listSkillFiles()) {
+            files[`.claude/skills/quox-plugin/${rel}`] = fs.readFileSync(path.join(SKILL_ROOT, rel), 'utf8');
+        }
+    }
 
     switch (template) {
         case 'basic':
@@ -915,7 +981,7 @@ function getTemplateFiles(pluginName, displayName, author, description, category
             if (mcpData) {
                 const resolvedToolNames = mcpData.resolvedToolNames || resolveMcpToolNameCollisions(mcpData.mcpTools).resolved;
                 files['src/data/mcp-tools.js'] = generateMcpToolsDataModule(displayName, mcpData.sourceCommand, mcpData.serverName, resolvedToolNames);
-                files['README.md'] = generateMcpReadme(pluginName, displayName, mcpData.sourceCommand, mcpData.serverName, resolvedToolNames);
+                files['README.md'] = generateMcpReadme(pluginName, displayName, mcpData.sourceCommand, mcpData.serverName, resolvedToolNames) + '\n' + generateReadme(pluginName, displayName, description).split('\n').slice(2).join('\n');
             }
             break;
 
@@ -958,6 +1024,9 @@ Options:
                           a specialist-agent plugin whose agent is wired with those tools.
   --from-mcp-json <file>  Migration mode (offline): read a saved tools/list result from
                           <file> instead of spawning a live MCP server.
+  --local-sdk <path>      Monorepo development: depend on a local quox-plugin-sdk checkout
+                          (file: deps) instead of the published ^0.2.0 packages.
+  --no-skill              Do not write the Claude skill to .claude/skills/quox-plugin/
   --non-interactive       Skip prompts, use defaults for anything not passed as a flag
   --help, -h              Show this help message
 `);
@@ -971,7 +1040,24 @@ async function main() {
         process.exit(0);
     }
 
-    let pluginName = args.find(a => !a.startsWith('--'));
+    const VALUE_FLAGS = ['--template', '--from-mcp', '--from-mcp-json', '--local-sdk'];
+    let pluginName = args.find((a, i) => !a.startsWith('-') && !VALUE_FLAGS.includes(args[i - 1]));
+    const skill = !args.includes('--no-skill');
+
+    // --local-sdk <checkout>: explicit monorepo-dev path. Writes file: deps. Never auto-detected.
+    let localSdk = null;
+    const localSdkIdx = args.indexOf('--local-sdk');
+    if (localSdkIdx !== -1) {
+        const given = args[localSdkIdx + 1];
+        const root = given && !given.startsWith('-') ? path.resolve(given) : null;
+        const ok = root && ['quox-plugin-sdk', 'quox-plugin-vite']
+            .every(p => fs.existsSync(path.join(root, 'packages', p, 'package.json')));
+        if (!ok) {
+            console.error('--local-sdk needs the path to a quox-plugin-sdk checkout (a directory containing packages/quox-plugin-sdk and packages/quox-plugin-vite).');
+            process.exit(1);
+        }
+        localSdk = root;
+    }
     let template = null;
     const nonInteractive = args.includes('--non-interactive') || !process.stdin.isTTY;
 
@@ -1109,7 +1195,7 @@ async function main() {
     console.log(`\nScaffolding ${displayName} (${template} template)...\n`);
 
     // Generate all files
-    const files = getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData);
+    const files = getTemplateFiles(pluginName, displayName, author, description, category, template, mcpData, { localSdk, skill });
 
     // Write files
     const writtenFiles = [];
@@ -1127,8 +1213,11 @@ async function main() {
     console.log('Next steps:');
     console.log(`  cd ${pluginName}`);
     console.log('  npm install');
-    console.log('  npm run build    # produces .quoxplugin file');
-    console.log('  npm run dev      # start dev server');
+    console.log('  npm run dev       # dev preview');
+    console.log('  npm run build     # build dist/');
+    console.log('  npm run validate  # check manifest and bundle');
+    console.log('  npx quox-plugin keygen --out .keys && npm run sign   # sign for install');
+    console.log('See README.md for details.');
     if (mcpData) {
         console.log('');
         console.log(`See README.md for the tool list and provenance. This plugin does not execute`);
