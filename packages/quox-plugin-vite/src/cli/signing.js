@@ -1,18 +1,29 @@
 /**
- * Community plugin signing, in the exact format the QuoxCORE host verifies
- * (services/auth/utils/plugins.js verifyPluginSignature):
+ * Community plugin signing, in the format the QuoxCORE host verifies
+ * (services/auth/utils/plugins.js verifyPluginSignature).
  *
- *   { algorithm: 'Ed25519',
- *     digest: <sha256 hex of the exact dist/plugin.esm.js bytes>,
- *     signature: <hex Ed25519 signature over the 32 raw digest bytes>,
- *     public_key_hex: <64 hex chars, the raw Ed25519 public key> }
+ * dist/signature.json carries TWO signatures by the same key:
+ *
+ *   v2 (binds everything that ships; see signature-v2.js):
+ *     format: 'quox-plugin-signature/v2', plugin_id, plugin_version,
+ *     manifest_sha256, files: { 'plugin.esm.js', 'plugin.css'? },
+ *     signature_v2: <hex Ed25519 over canonicalJson(v2 payload)>
+ *
+ *   v1 (kept so hosts that predate v2 still install the plugin):
+ *     digest: <sha256 of dist/plugin.esm.js>,
+ *     signature: <hex Ed25519 over the 32 raw digest bytes>
+ *
+ * A v2-aware host verifies v2 and refuses any change to the manifest, the
+ * bundle or the CSS. Stripping the v2 fields does not help an attacker: the
+ * host then treats the plugin as v1 (manifest unbound) and refuses any
+ * manifest that asks for more than sidebar, storage and notifications.
  *
  * The org admin trusts public_key_hex via `quox plugin trusted-keys add`.
- * Only plugin.esm.js is bound by the host check (css and manifest are not).
  */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { v2Payload, v2Message, sha256Hex } = require('./signature-v2.js');
 
 const KEY_FILE = 'plugin-signing.pem';
 const PUB_FILE = 'plugin-signing.pub';
@@ -55,19 +66,28 @@ function sign({ dir = '.', keyPath } = {}) {
     if (privateKey.asymmetricKeyType !== 'ed25519') {
         throw new Error('signing key must be Ed25519 (generate one with `quox-plugin keygen`)');
     }
-    const digest = crypto.createHash('sha256').update(fs.readFileSync(bundlePath)).digest('hex');
-    const signature = crypto.sign(null, Buffer.from(digest, 'hex'), privateKey).toString('hex');
+    let manifest;
+    try {
+        manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+    } catch (e) {
+        throw new Error(`could not read manifest.json in ${root}: ${e.message} (the signature binds the manifest)`);
+    }
+    if (!manifest || typeof manifest.id !== 'string' || typeof manifest.version !== 'string') {
+        throw new Error('manifest.json needs a string id and version: the signature binds them');
+    }
+    const digest = sha256Hex(fs.readFileSync(bundlePath));
+    const cssPath = path.join(root, 'dist', 'plugin.css');
+    const cssSha256 = fs.existsSync(cssPath) ? sha256Hex(fs.readFileSync(cssPath)) : null;
+    const payload = v2Payload({ manifest, bundleSha256: digest, cssSha256 });
     const out = {
         algorithm: 'Ed25519',
-        digest,
-        signature,
         public_key_hex: rawPublicHex(crypto.createPublicKey(privateKey)),
+        ...payload,
+        signature_v2: crypto.sign(null, v2Message(payload), privateKey).toString('hex'),
+        // v1, for hosts that predate v2.
+        digest,
+        signature: crypto.sign(null, Buffer.from(digest, 'hex'), privateKey).toString('hex'),
     };
-    try {
-        const m = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
-        if (m.id) out.plugin_id = m.id;
-        if (m.version) out.plugin_version = m.version;
-    } catch { /* manifest optional for signing */ }
     out.signed_at = new Date().toISOString();
     fs.writeFileSync(path.join(root, 'dist', 'signature.json'), JSON.stringify(out, null, 2) + '\n');
     return out;

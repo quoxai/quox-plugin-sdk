@@ -1,6 +1,6 @@
 {
   "name": "create-quox-plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Scaffold a sandbox-safe QuoxCORE community plugin",
   "bin": {
     "create-quox-plugin": "bin/create.js"

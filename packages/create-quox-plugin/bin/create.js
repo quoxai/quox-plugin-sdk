@@ -811,7 +811,7 @@ function generateViteConfig(pluginName) {
     return renderTemplate('_shared/vite.config.js', { pluginName });
 }
 
-const SDK_RANGE = '^0.2.0';
+const SDK_RANGE = '^0.3.0';
 
 /**
  * SDK dependency specs. Default is the registry range. `localSdk` (from the explicit
@@ -1029,7 +1029,7 @@ Options:
   --from-mcp-json <file>  Migration mode (offline): read a saved tools/list result from
                           <file> instead of spawning a live MCP server.
   --local-sdk <path>      Monorepo development: depend on a local quox-plugin-sdk checkout
-                          (file: deps) instead of the published ^0.2.0 packages.
+                          (file: deps) instead of the published ^0.3.0 packages.
   --no-skill              Do not write the Claude skill to .claude/skills/quox-plugin/
   --non-interactive       Skip prompts, use defaults for anything not passed as a flag
   --help, -h              Show this help message

@@ -9,6 +9,8 @@
  */
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const { FORMAT_V2, sha256Hex, v2Payload, v2Message } = require('./signature-v2.js');
 
 const PLUGIN_ID_RE = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 const RESERVED_PREFIXES = ['core-', 'system-', 'quox-', 'admin-'];
@@ -99,6 +101,64 @@ function checkPermissions(code, manifest) {
     return { errors, warnings };
 }
 
+/**
+ * Self-check dist/signature.json against the files as they are NOW, the way
+ * the host will (minus the org trust lookup). Catches the common mistake of
+ * editing manifest.json or rebuilding after signing.
+ */
+function checkSignature(root, manifest) {
+    const errors = [];
+    const warnings = [];
+    const sigPath = path.join(root, 'dist', 'signature.json');
+    if (!fs.existsSync(sigPath)) return { errors, warnings };
+    let sig;
+    try { sig = JSON.parse(fs.readFileSync(sigPath, 'utf8')); } catch (e) {
+        errors.push(`dist/signature.json is not valid JSON: ${e.message}`);
+        return { errors, warnings };
+    }
+    if (!('format' in sig) && !('signature_v2' in sig)) {
+        warnings.push('dist/signature.json is a v1 signature: it binds dist/plugin.esm.js only, not the manifest or css. Hosts with signature v2 refuse a v1 plugin that asks for more than sidebar, storage and notifications. Re-sign with `quox-plugin sign` (quox-plugin-vite >= 0.3.0).');
+        return { errors, warnings };
+    }
+    if (sig.format !== FORMAT_V2 || typeof sig.signature_v2 !== 'string' || typeof sig.public_key_hex !== 'string') {
+        errors.push('dist/signature.json: unknown or incomplete signature format; re-sign with `quox-plugin sign`');
+        return { errors, warnings };
+    }
+    if (!manifest) return { errors, warnings };
+    const bundlePath = path.join(root, 'dist', 'plugin.esm.js');
+    const cssPath = path.join(root, 'dist', 'plugin.css');
+    if (!fs.existsSync(bundlePath)) return { errors, warnings };
+    const payload = v2Payload({
+        manifest,
+        bundleSha256: sha256Hex(fs.readFileSync(bundlePath)),
+        cssSha256: fs.existsSync(cssPath) ? sha256Hex(fs.readFileSync(cssPath)) : null,
+    });
+    const stale = [];
+    if (sig.plugin_id !== payload.plugin_id || sig.plugin_version !== payload.plugin_version || sig.manifest_sha256 !== payload.manifest_sha256) {
+        stale.push('manifest.json');
+    }
+    const files = new Set([...Object.keys(sig.files || {}), ...Object.keys(payload.files)]);
+    for (const f of [...files].sort()) {
+        if ((sig.files || {})[f] !== payload.files[f]) stale.push(`dist/${f}`);
+    }
+    if (stale.length) {
+        errors.push(`dist/signature.json no longer matches ${stale.join(', ')} (changed after signing). The host refuses this install; re-run \`quox-plugin sign\`.`);
+        return { errors, warnings };
+    }
+    try {
+        const pub = crypto.createPublicKey({
+            key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(sig.public_key_hex, 'hex')]),
+            format: 'der', type: 'spki',
+        });
+        if (!crypto.verify(null, v2Message(payload), pub, Buffer.from(sig.signature_v2, 'hex'))) {
+            errors.push('dist/signature.json: signature_v2 does not verify; re-sign with `quox-plugin sign`');
+        }
+    } catch (e) {
+        errors.push(`dist/signature.json: could not verify signature_v2 (${e.message})`);
+    }
+    return { errors, warnings };
+}
+
 function validate({ dir = '.' } = {}) {
     const root = path.resolve(dir);
     const errors = [];
@@ -140,6 +200,10 @@ function validate({ dir = '.' } = {}) {
         cssBytes = fs.statSync(cssPath).size;
     }
 
+    const sc = checkSignature(root, manifest);
+    errors.push(...sc.errors);
+    warnings.push(...sc.warnings);
+
     // Estimated install request body: base64 inflates 4/3.
     const b64 = (n) => 4 * Math.ceil(n / 3);
     const body = b64(bundleBytes) + b64(cssBytes) + (manifest ? Buffer.byteLength(JSON.stringify(manifest)) : 0) + 1024;
@@ -152,4 +216,4 @@ function validate({ dir = '.' } = {}) {
     return { ok: errors.length === 0, errors, warnings, manifest };
 }
 
-module.exports = { validate, validateManifest, scanBundle, usedPermissions, checkPermissions, PLUGIN_ID_RE, RESERVED_PREFIXES };
+module.exports = { validate, checkSignature, validateManifest, scanBundle, usedPermissions, checkPermissions, PLUGIN_ID_RE, RESERVED_PREFIXES };

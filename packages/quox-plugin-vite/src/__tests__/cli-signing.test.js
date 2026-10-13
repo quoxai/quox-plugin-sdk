@@ -51,28 +51,33 @@ describe('quox-plugin keygen / sign', () => {
         expect(onDisk.public_key_hex).toBe(publicKeyHex);
         expect(onDisk.digest).toBe(sha(bundle));
 
-        const verdict = verifyPluginSignature(fakeDb(publicKeyHex), 'org', { bundleSha256: sha(bundle), signature: onDisk });
-        expect(verdict).toEqual({ valid: true, matchedKeyId: 'tk_1' });
+        const manifest = JSON.parse(fs.readFileSync(path.join(tmp, 'manifest.json'), 'utf8'));
+        const verdict = verifyPluginSignature(fakeDb(publicKeyHex), 'org', { bundleSha256: sha(bundle), manifest, signature: onDisk });
+        expect(verdict).toEqual({ valid: true, matchedKeyId: 'tk_1', binding: 'v2' });
     });
 
     it('host rejects the signature if the bundle bytes change after signing', () => {
         const dist = path.join(tmp, 'dist');
         fs.mkdirSync(dist);
         fs.writeFileSync(path.join(dist, 'plugin.esm.js'), 'a');
+        fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({ id: 'my-plugin', name: 'My', version: '1.0.0' }));
         const { publicKeyHex } = signing.keygen({ out: path.join(tmp, 'k') });
         const sig = signing.sign({ dir: tmp, keyPath: path.join(tmp, 'k', 'plugin-signing.pem') });
-        const v = verifyPluginSignature(fakeDb(publicKeyHex), 'org', { bundleSha256: sha('b'), signature: sig });
+        const manifest = { id: 'my-plugin', name: 'My', version: '1.0.0' };
+        const v = verifyPluginSignature(fakeDb(publicKeyHex), 'org', { bundleSha256: sha('b'), manifest, signature: sig });
         expect(v.valid).toBe(false);
-        expect(v.reason).toBe('digest_mismatch');
+        expect(v.reason).toBe('files_mismatch');
     });
 
     it('host rejects a key that is not trusted', () => {
         const dist = path.join(tmp, 'dist');
         fs.mkdirSync(dist);
         fs.writeFileSync(path.join(dist, 'plugin.esm.js'), 'a');
+        fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({ id: 'my-plugin', name: 'My', version: '1.0.0' }));
         signing.keygen({ out: path.join(tmp, 'k') });
         const sig = signing.sign({ dir: tmp, keyPath: path.join(tmp, 'k', 'plugin-signing.pem') });
-        const v = verifyPluginSignature(fakeDb('00'.repeat(32)), 'org', { bundleSha256: sha('a'), signature: sig });
+        const manifest = { id: 'my-plugin', name: 'My', version: '1.0.0' };
+        const v = verifyPluginSignature(fakeDb('00'.repeat(32)), 'org', { bundleSha256: sha('a'), manifest, signature: sig });
         expect(v.reason).toBe('no_matching_key');
     });
 

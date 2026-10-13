@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-quox-plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ESLint rules for Quox community plugin authors: no host-only globals, no direct network, no browser-only primary storage.",
   "main": "./src/index.js",
   "type": "module",

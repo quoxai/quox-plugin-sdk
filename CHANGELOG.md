@@ -1,0 +1,35 @@
+# Changelog
+
+## 0.3.0 (2026-10-14)
+
+All four packages move together: `quox-plugin-sdk`, `quox-plugin-vite`,
+`eslint-plugin-quox-plugin`, `create-quox-plugin`.
+
+### Security
+- **Signature v2 binds the manifest and every shipped file.** In 0.2.0 the
+  signature covered `dist/plugin.esm.js` only, so `manifest.json`
+  (permissions, backend image) and `dist/plugin.css` could be changed under a
+  valid signature. `quox-plugin sign` now also writes a v2 signature over a
+  canonical payload of plugin id, version, the canonical manifest hash and the
+  sha256 of `plugin.esm.js` and `plugin.css`. A v2-aware QuoxCORE host
+  recomputes all of these from what is installed and refuses any change
+  (`manifest_mismatch`, `files_mismatch`). See docs/signing.md.
+- The v1 fields (`digest`, `signature`) are still written, so hosts that
+  predate v2 keep installing your plugin.
+- A plugin signed only with v1 (0.2.0) still installs on a v2-aware host, but
+  only if its manifest asks for nothing beyond `sidebar`, `storage` and
+  `notifications` and declares no `backend` (`manifest_unbound_permissions`).
+  Re-sign with 0.3.0.
+- `quox-plugin validate` checks `dist/signature.json` against the current
+  manifest and files, and warns on a v1-only signature.
+- Docs: org-scoped revocation of a signer key or a bundle digest
+  (`quox plugin revocations ...`), served by QuoxCORE hosts that include it.
+
+### Changed
+- `quox-plugin sign` now requires `manifest.json` with a string `id` and
+  `version` (the signature binds them).
+- New scaffolds depend on `^0.3.0`.
+
+## 0.2.0 (2026-10-13)
+
+First public release (Apache-2.0).

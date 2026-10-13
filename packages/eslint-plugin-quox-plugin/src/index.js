@@ -14,7 +14,7 @@ import noHostOnlyGlobals from './rules/no-host-only-globals.js';
 const plugin = {
     meta: {
         name: 'eslint-plugin-quox-plugin',
-        version: '0.2.0',
+        version: '0.3.0',
     },
     rules: {
         'no-cache-as-primary-storage': noCacheAsPrimaryStorage,

@@ -43,7 +43,7 @@ function run(argv, io = { log: console.log, error: console.error }) {
         }
         if (cmd === 'sign') {
             const r = sign({ dir: args.dir || '.', keyPath: args.key });
-            io.log(`signed dist/plugin.esm.js (sha256 ${r.digest}) -> dist/signature.json`);
+            io.log(`signed manifest.json + ${Object.keys(r.files).map((f) => 'dist/' + f).join(' + ')} (signature v2, plus v1 for older hosts) -> dist/signature.json`);
             io.log('Install: quox plugin install --manifest manifest.json --bundle dist/plugin.esm.js --css dist/plugin.css --signature dist/signature.json');
             return 0;
         }

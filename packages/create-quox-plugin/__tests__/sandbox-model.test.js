@@ -146,11 +146,11 @@ describe('scaffolded templates follow the community sandbox model', () => {
                 expect(all).toMatch(/qx-banner--error/);
             });
 
-            it('package.json uses registry deps ^0.2.0, with the contract scripts', () => {
+            it('package.json uses registry deps ^0.3.0, with the contract scripts', () => {
                 const pkg = JSON.parse(fs.readFileSync(path.join(dirs[t], 'package.json'), 'utf8'));
                 const all = { ...pkg.dependencies, ...pkg.devDependencies };
-                expect(all['quox-plugin-sdk']).toBe('^0.2.0');
-                expect(all['quox-plugin-vite']).toBe('^0.2.0');
+                expect(all['quox-plugin-sdk']).toBe('^0.3.0');
+                expect(all['quox-plugin-vite']).toBe('^0.3.0');
                 expect(JSON.stringify(pkg)).not.toMatch(/file:/);
                 expect(JSON.stringify(pkg)).not.toContain('/home/');
                 expect(pkg.scripts.dev).toBe('vite');
@@ -214,7 +214,7 @@ describe('scaffolded templates follow the community sandbox model', () => {
 
     it('never auto-detects a local checkout (default deps are registry semvers even inside the monorepo)', () => {
         const pkg = JSON.parse(fs.readFileSync(path.join(dirs.basic, 'package.json'), 'utf8'));
-        expect(pkg.dependencies['quox-plugin-sdk']).toBe('^0.2.0');
+        expect(pkg.dependencies['quox-plugin-sdk']).toBe('^0.3.0');
     });
 
     it('--from-mcp-json output follows the sandbox model too', () => {
@@ -274,7 +274,7 @@ describe('enterprise-extension backend', () => {
 describe('create-quox-plugin package.json (publish fields)', () => {
     const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
     it('carries the contract fields', () => {
-        expect(pkg.version).toBe('0.2.0');
+        expect(pkg.version).toBe('0.3.0');
         expect(pkg.license).toBe('Apache-2.0');
         expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/quoxai/quox-plugin-sdk.git', directory: 'packages/create-quox-plugin' });
         expect(pkg.homepage).toBe('https://quox.ai/docs/plugin-sdk');
