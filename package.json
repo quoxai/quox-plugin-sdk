@@ -10,7 +10,7 @@
     "build": "npm run build --workspaces",
     "test": "npm run test:vitest && npm run test:node",
     "test:vitest": "vitest run",
-    "test:node": "node --test packages/quox-glyph/test/",
+    "test:node": "node --test packages/quox-glyph/test/glyph.test.mjs",
     "check:pack": "node scripts/check-pack.mjs"
   },
   "devDependencies": {
