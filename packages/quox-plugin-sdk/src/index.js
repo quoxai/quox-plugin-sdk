@@ -48,6 +48,18 @@ export const COMMUNITY_PERMISSION_FOR_METHOD = Object.freeze({
     notify: 'notifications',
 });
 
+/**
+ * window.quox methods the host exposes but does NOT serve to community plugins
+ * yet (the collector has no route behind them). After the permission gate
+ * passes they reject with Error('not_available: <name>') and send nothing.
+ * Value is the name used in the error text.
+ */
+export const NOT_AVAILABLE_METHODS = Object.freeze({
+    'memory.save': 'memory',
+    'memory.search': 'memory',
+    'aee.emit': 'aee',
+});
+
 function hostWindow() {
     return typeof window !== 'undefined' ? window : undefined;
 }

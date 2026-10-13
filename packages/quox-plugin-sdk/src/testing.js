@@ -5,7 +5,7 @@
  * surface a community plugin gets inside the Quox sandbox frame.
  */
 
-import { COMMUNITY_PERMISSION_FOR_METHOD } from './index.js';
+import { COMMUNITY_PERMISSION_FOR_METHOD, NOT_AVAILABLE_METHODS } from './index.js';
 
 const DEFAULT_USER = { userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' };
 
@@ -22,13 +22,16 @@ function clone(v) {
  * @param {(path: string, options: object) => ({status:number, ok?:boolean, body?:any}|Promise<any>)} [opts.fetch]
  *        handler for window.quox.fetch; defaults to 404.
  * @param {string[]} [opts.permissions] granted permissions, enforced exactly like the
- *        host (storage, network, memory, aee, notifications). A refused call rejects
+ *        host (storage, network, memory, aee, notifications; memory and aee then reject not_available). A refused call rejects
  *        with Error('permission_denied: <perm>'). Default when neither this nor
  *        `manifest` is given: ALL granted (convenient for unit tests).
  * @param {{permissions?: string[]}} [opts.manifest] your manifest.json object; its
  *        `permissions` are used, fail-closed (absent = nothing granted), as in prod.
  * @param {boolean} [opts.strictPermissions] with no `permissions`/`manifest`, grant
  *        nothing instead of everything.
+ * @param {boolean} [opts.simulateUnavailable=true] memory.* and aee.emit reject with
+ *        Error('not_available: <name>') (after the permission check), exactly like the
+ *        host today. Pass false ONLY to test future behaviour; do not ship code that relies on it.
  */
 export function createMockQuox(opts = {}) {
     const pluginId = opts.pluginId || 'test-plugin';
@@ -41,6 +44,11 @@ export function createMockQuox(opts = {}) {
     const notifyLog = [];
     const navigateLog = [];
     let eventHandler = null;
+
+    const simulateUnavailable = opts.simulateUnavailable !== false;
+    const unavailable = (method) => {
+        if (simulateUnavailable) throw new Error(`not_available: ${NOT_AVAILABLE_METHODS[method]}`);
+    };
 
     const quox = {
         pluginId,
@@ -65,8 +73,9 @@ export function createMockQuox(opts = {}) {
         },
 
         memory: {
-            async save(entry) { memoryStore.push(clone(entry)); return { success: true }; },
+            async save(entry) { unavailable('memory.save'); memoryStore.push(clone(entry)); return { success: true }; },
             async search(query, limit = 10) {
+                unavailable('memory.search');
                 const q = String(query || '').toLowerCase();
                 const results = memoryStore
                     .filter((e) => JSON.stringify(e).toLowerCase().includes(q))
@@ -77,7 +86,7 @@ export function createMockQuox(opts = {}) {
         },
 
         aee: {
-            async emit(intent, payload) { aeeLog.push({ intent, payload: clone(payload) }); return { success: true }; },
+            async emit(intent, payload) { unavailable('aee.emit'); aeeLog.push({ intent, payload: clone(payload) }); return { success: true }; },
         },
 
         async navigate(path) { navigateLog.push(path); },
@@ -162,7 +171,7 @@ export function uninstallMockQuox() {
 export function createMockPluginApi() {
     throw new Error(
         'createMockPluginApi() was removed: its api.cache/durable/secrets/config/chat surface does not exist in the ' +
-        'community sandbox. Use createMockQuox() (window.quox: storage, fetch, memory, aee, navigate, notify, getUser, onEvent).'
+        'community sandbox. Use createMockQuox() (window.quox: storage, fetch, navigate, notify, getUser, onEvent).'
     );
 }
 

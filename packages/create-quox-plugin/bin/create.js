@@ -48,7 +48,7 @@ const TEMPLATES = [
     { name: 'fleet-management', description: 'Manage hosts/containers with safety gates (Docker Fleet pattern)', suggestedCategory: 'Infrastructure' },
     { name: 'service-bridge', description: 'Integrate a third-party service with a specialist agent (GitHub pattern)', suggestedCategory: 'Communication' },
     { name: 'ui-feature', description: 'Client-side feature with storage and config (Action Tracker pattern)', suggestedCategory: 'Productivity' },
-    { name: 'enterprise-extension', description: 'Multi-tier plugin with memory, AOCL, and backend (Advanced Memory pattern)', suggestedCategory: 'AI & Intelligence' },
+    { name: 'enterprise-extension', description: 'Multi-tier plugin with usage meters, tier gates and a Dockerised backend', suggestedCategory: 'AI & Intelligence' },
     { name: 'specialist-agent', description: 'Specialist agent with tools, persona, autonomy, and inline chat (Security Scanner pattern)', suggestedCategory: 'AI & Intelligence' },
     { name: 'agentic-team', description: 'Multi-agent team with orchestrator, policies, and shared context (DevOps Team pattern)', suggestedCategory: 'Infrastructure' },
 ];
@@ -89,7 +89,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'fleet-management') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             bastionUrl: { type: 'url', label: 'Bastion URL', description: 'URL of the bastion host', default: 'http://localhost:9848' },
@@ -107,7 +107,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'service-bridge') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools', 'memory'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             oauthToken: { type: 'password', label: 'OAuth Token', description: 'OAuth access token for the service', default: '' },
@@ -153,7 +153,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'enterprise-extension') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'memory'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             endpoint: { type: 'url', label: 'Service Endpoint', description: 'Backend service URL', default: 'http://localhost:8080' },
@@ -181,7 +181,7 @@ function generateManifest(pluginName, displayName, author, description, category
     }
 
     if (template === 'specialist-agent') {
-        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools'];
+        base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools'];
         base.routes[`/plugins/${pluginName}/settings`] = 'SettingsPanel';
         base.configSchema = {
             scanTarget: { type: 'string', label: 'Default Target', description: 'Default scan target (subnet or host)', default: '192.0.2.0/24' },
@@ -298,7 +298,7 @@ function generateManifest(pluginName, displayName, author, description, category
             const toolDefs = buildMcpToolDefinitions(pluginName, resolvedToolNames);
             const agentLabel = serverName || displayName;
 
-            base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'aee', 'tools'];
+            base.permissions = ['sidebar', 'storage', 'notifications', 'network', 'tools'];
             base.agentDefinition.description = `Specialist agent wired to the "${agentLabel}" MCP server (${mcpTools.length} tool(s) imported).`;
             base.agentDefinition.domain = 'mcp-integration';
             base.agentDefinition.systemPrompt = `You are the ${displayName} specialist agent, generated from the MCP server "${agentLabel}". You have access to ${mcpTools.length} tool(s) imported from that server: explain what each tool does, help the user pick the right one, and summarise results clearly. Live execution of these tools is wired through Quox powers, not this browser plugin.`;
@@ -849,7 +849,7 @@ ${description}
 
 A QuoxCORE **community plugin**. It runs in a sandboxed frame: no direct network, no host
 components. It talks to Quox only through \`getQuox()\` from \`quox-plugin-sdk\` (storage, fetch to
-your own plugin backend, memory, AEE, notifications, user) and is styled with the \`qx-*\` design
+your own plugin backend, notifications, user; memory and AEE are not available yet) and is styled with the \`qx-*\` design
 system classes. Read the header comment of \`src/views/MainView.jsx\` for what this template
 does and what needs a backend.
 

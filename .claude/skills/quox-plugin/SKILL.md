@@ -17,7 +17,7 @@ Inside the frame a plugin has ONLY:
 - `window.quox` (use `getQuox()` from `quox-plugin-sdk`), every method returns a Promise:
   `storage.get/set/remove/keys/getAll`, `fetch(path, {method, headers, body})` (path is relative to
   your plugin's own backend namespace; absolute URLs are refused), `memory.save/search`,
-  `aee.emit(intent, payload)`, `navigate(path)`, `notify(message, type)`, `getUser()`.
+  `aee.emit(intent, payload)` (both @experimental: not available to community plugins yet, they reject `not_available`; do not use), `navigate(path)`, `notify(message, type)`, `getUser()`.
 - Only your own `plugin.css` is injected. Host stylesheets are not present, so `qx-*` classes work
   only because the build includes the design-system CSS.
 
@@ -36,10 +36,10 @@ Templates (`npm create quox-plugin@latest <name> -- --template <template>`):
 |----------|----------|
 | `basic` | Hello world, learning the sandbox |
 | `monitoring-dashboard` | Show status of a service your backend polls |
-| `fleet-management` | Host table with confirm-before-act safety gates and AEE audit |
-| `service-bridge` | Integrate a third-party API through your backend, plus memory |
+| `fleet-management` | Host table with confirm-before-act safety gates |
+| `service-bridge` | Integrate a third-party API through your backend, plus a notes panel |
 | `ui-feature` | Client-side tool backed by plugin storage |
-| `enterprise-extension` | Tiered features, usage meters, memory search, backend skeleton |
+| `enterprise-extension` | Tiered features, usage meters, backend skeleton |
 | `specialist-agent` | Agent definition, persona, tools; status and tool runner UI |
 | `agentic-team` | Team of agents with policies, task queue, shared context |
 
@@ -59,8 +59,8 @@ comparison, limits, backend. Run `npm run validate` after every edit.
 | `storage` | `getQuox().storage` |
 | `notifications` | `getQuox().notify` |
 | `network` | `getQuox().fetch` to your own backend |
-| `memory` | `getQuox().memory` |
-| `aee` | `getQuox().aee.emit` |
+| `memory` | `getQuox().memory` (not available yet) |
+| `aee` | `getQuox().aee.emit` (not available yet) |
 | `tools` | Register agent tools |
 
 ## Mode: debug
@@ -69,7 +69,7 @@ comparison, limits, backend. Run `npm run validate` after every edit.
   (a host component library or context). Replace with `qx-*` classes and `getQuox()`.
 - Blank view: an RPC rejected and nothing rendered the error. Show an error banner for every call.
 - Unstyled UI: the class is not in the design-system CSS; check the name exists.
-- Storage/fetch/memory/aee rejects: add the matching permission to `manifest.json`.
+- Storage/fetch/notify rejects: add the matching permission to `manifest.json`.
 - `fetch` refused: path must be relative to your plugin namespace, no `..`, allowed methods only.
 - Install says unsigned or untrusted: run `npm run validate`, then sign (below).
 
@@ -78,9 +78,8 @@ comparison, limits, backend. Run `npm run validate` after every edit.
 - New view: add `src/views/X.jsx`, a route in `manifest.json`, and in `registerPlugin` routes.
 - Backend: add `backend/server.js` (Express, `/health`), a Dockerfile, a `backend` block, `network`
   permission. Secrets live there, not in plugin storage.
-- AEE: add `aee` permission and `capabilities.aeeIntents`; call `getQuox().aee.emit(intent, payload)`;
-  intent names are `{pluginId}.{entity}.{action}`.
-- Memory: `await getQuox().memory.save({ type: 'fact', content, tags })`, `memory.search(query, limit)`.
+- AEE and memory: not available to community plugins yet (`aee.emit`, `memory.save/search` reject
+  `not_available`). Use plugin storage or your own backend meanwhile; do not add these calls.
 - Tests: `import { createMockQuox, installMockQuox } from 'quox-plugin-sdk/testing'`.
 
 ## Mode: review

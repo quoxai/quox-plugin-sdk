@@ -40,7 +40,7 @@ npm install
 Community plugins run in an isolated frame. Inside it you have:
 
 - React, ReactDOM and the router (shared dependencies).
-- `getQuox()` from `quox-plugin-sdk`: `storage`, `fetch` (to your own plugin backend only), `memory`, `aee.emit`, `notify`, `navigate`, `getUser`. Every method returns a Promise and can fail.
+- `getQuox()` from `quox-plugin-sdk`: `storage`, `fetch` (to your own plugin backend only), `notify`, `navigate`, `getUser`. Every method returns a Promise and can fail. `memory` and `aee.emit` exist but are not available to community plugins yet (they reject with `not_available`).
 - Your own `plugin.css`, which includes the `qx-*` design-system classes.
 
 You do **not** have: the network (no `fetch`, XHR or WebSocket of your own), host components, host contexts, or host stylesheets. A plugin that touches those fails at runtime. See [Plugin API](./plugin-api.md).
@@ -87,7 +87,7 @@ Always render the error: an RPC that fails and shows nothing looks like a blank 
 npm run dev
 ```
 
-Starts Vite with the `quox-plugin-vite` dev preview, which mocks the Quox host so your views render locally. It is an approximation, not a QuoxCORE instance: confirm storage, backend calls and memory by installing the built plugin.
+Starts Vite with the `quox-plugin-vite` dev preview, which mocks the Quox host so your views render locally. It is an approximation, not a QuoxCORE instance: confirm storage, backend calls by installing the built plugin.
 
 ## 6. Build, validate, sign
 

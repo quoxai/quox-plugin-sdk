@@ -149,6 +149,12 @@ describe('validate(dir) permission scan', () => {
         expect(r.warnings.join('\n')).toMatch(/"memory"/);
         expect(r.warnings.join('\n')).not.toMatch(/"sidebar"|"tools"/);
     });
+    it('warns (not errors) when the bundle uses memory or aee', () => {
+        setup('const q=getQuox();q.memory.search("y");q.aee.emit("i",{})', ['memory', 'aee']);
+        const r = validate({ dir: tmp });
+        expect(r.ok).toBe(true);
+        expect(r.warnings.join('\n')).toContain('memory/aee are not available to community plugins yet; calls will reject with not_available');
+    });
     it('passes cleanly when declared equals used', () => {
         setup('const q=getQuox();q.storage.get("a");q.fetch("/x")', ['sidebar', 'storage', 'network']);
         const r = validate({ dir: tmp });

@@ -56,7 +56,7 @@ export default function MainView() {
                         </div>
                     </div>
 
-                    <AgentSidebar title="${displayName} memory" />
+                    <AgentSidebar title="${displayName} notes" />
                 </div>
             )}
         </Page>

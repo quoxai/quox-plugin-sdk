@@ -6,7 +6,7 @@ Tools for building third-party plugins for [Quox](https://quox.ai), the self-hos
 
 A community plugin is a React bundle that runs inside a sandboxed iframe with an opaque origin (`sandbox="allow-scripts"`) and a Content Security Policy of `connect-src 'none'`. The plugin cannot make network requests, read the host page, or touch other plugins. Quox gives it React, ReactDOM and React Router through `window.__quoxSharedDeps`, and only its own `plugin.css` is loaded: host stylesheets are not present.
 
-Everything else goes through `window.quox`, a promise-based API bridged to the host over `postMessage`: namespaced storage, `fetch` to the plugin's own backend namespace (relative paths only), memory, AEE events, notifications, navigation and `getUser()`. If an API is not on that list, it does not exist for a community plugin. Details are in [docs/plugin-api.md](docs/plugin-api.md).
+Everything else goes through `window.quox`, a promise-based API bridged to the host over `postMessage`: namespaced storage, `fetch` to the plugin's own backend namespace (relative paths only), notifications, navigation and `getUser()`. `memory` and `aee.emit` are exposed but not available to community plugins yet (they reject with `not_available`). If an API is not on that list, it does not exist for a community plugin. Details are in [docs/plugin-api.md](docs/plugin-api.md).
 
 ## Packages
 

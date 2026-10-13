@@ -335,11 +335,21 @@ export interface QuoxPluginApi {
         body: string;
     }>;
 
+    /**
+     * @experimental Not available to community plugins yet: every call rejects
+     * with Error('not_available: memory') after the permission check. Use
+     * `storage` or your plugin's own backend meanwhile.
+     */
     memory: {
         save(entry: { type: string; content: string; tags?: string[] }): Promise<any>;
         search(query: string, limit?: number): Promise<any>;
     };
 
+    /**
+     * @experimental Not available to community plugins yet: emit rejects with
+     * Error('not_available: aee') after the permission check. Use your plugin's
+     * own backend meanwhile.
+     */
     aee: {
         emit(intent: string, payload: any): Promise<any>;
     };

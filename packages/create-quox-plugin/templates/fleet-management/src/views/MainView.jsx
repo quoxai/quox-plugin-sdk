@@ -5,8 +5,9 @@
  *
  * What a sandboxed plugin can and cannot do: it cannot reach hosts, a bastion
  * or the fleet directly. This view asks YOUR plugin backend (getQuox().fetch)
- * to list hosts and to run actions, and records an audit envelope for every
- * action with getQuox().aee.emit. Governed host access (the Quox fleet, vault
+ * to list hosts and to run actions. window.quox.aee is not available to
+ * community plugins yet (it rejects not_available), so record your audit trail in
+ * your backend until it ships. Governed host access (the Quox fleet, vault
  * credentials, bastion exec) belongs to an official plugin or to your backend
  * calling a service you operate; it is not available inside the sandbox.
  *
@@ -15,7 +16,6 @@
  * sample data are simulated locally and say so.
  */
 
-import { getQuox } from 'quox-plugin-sdk';
 import { api, toast } from '../lib/api';
 import useLoad from '../lib/useLoad';
 import { ErrorBanner, InfoBanner, Page, Spinner } from '../lib/ui';
@@ -45,8 +45,6 @@ export default function MainView() {
         setBusy(true);
         setActionError(null);
         try {
-            // Audit first: if the host refuses the envelope we do not act.
-            await getQuox().aee.emit('${pluginName}.host.' + action, { hostId: host.id, hostname: host.hostname, action });
             if (usingSample) {
                 setSample(prev => action === 'remove'
                     ? prev.filter(h => h.id !== host.id)

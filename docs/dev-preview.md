@@ -12,8 +12,9 @@ runs a community plugin, not the way the dashboard runs first-party code.
   `LicenseValidator`, `ServerSyncQueue`, `OrgScopedStorage` and `window.__quoxGlass` are
   stubs that throw `[quox-plugin] <name> is not available in isolated plugins; use window.quox RPC instead`.
 - `window.quox` is the host's postMessage RPC. The dev server answers it with an in-memory
-  mock: `storage`, `memory`, `aee.emit`, `notify` (shows a toast), `navigate`, `getUser`
-  (`dev-user`, `dev-org`, `admin`, `pro`). State lives until the dev server stops.
+  mock: `storage`, `notify` (shows a toast), `navigate`, `getUser`
+  (`dev-user`, `dev-org`, `admin`, `pro`). `memory.*` and `aee.emit` reject with `not_available`
+  (after the permission check), like the host today. State lives until the dev server stops.
 - `window.quox.fetch(path)` is forwarded to a dev backend if you set `devBackendUrl` (or
   `QUOX_DEV_BACKEND_URL`), as `<backend>/collector/api/v1/plugins/<id><path>`. With none set
   it answers 404 `dev_backend_not_configured`. Absolute URLs, traversal and unlisted methods

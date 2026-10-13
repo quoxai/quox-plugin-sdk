@@ -17,7 +17,4 @@ export const MOCK_DATA = {
         { id: 'f-5', name: 'API Access', description: 'REST API for programmatic access', locked: true, requiredTier: 'enterprise' },
         { id: 'f-6', name: 'Custom Integrations', description: 'Connect to external services and pipelines', locked: true, requiredTier: 'enterprise' },
     ],
-    memories: [
-        { id: 'm-1', type: 'fact', content: 'Example memory entry for search demonstration', tags: ['example'] },
-    ],
 };

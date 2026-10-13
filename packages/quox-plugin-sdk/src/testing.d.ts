@@ -10,6 +10,8 @@ export interface MockQuoxOptions {
     manifest?: { permissions?: string[] };
     /** With no permissions/manifest, grant nothing instead of everything. */
     strictPermissions?: boolean;
+    /** Default true: memory.* and aee.emit reject with not_available (like the host). false only for testing future behaviour. */
+    simulateUnavailable?: boolean;
     sharedDeps?: SharedDeps | Record<string, unknown>;
 }
 

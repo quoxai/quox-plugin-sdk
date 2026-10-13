@@ -3,7 +3,7 @@ import {
     createMockQuox, installMockQuox, uninstallMockQuox,
     createMockPluginApi, setupPluginTestEnv, teardownPluginTestEnv, setupGlassMocks,
 } from '../testing.js';
-import { getQuox } from '../index.js';
+import { getQuox, NOT_AVAILABLE_METHODS } from '../index.js';
 
 describe('createMockQuox', () => {
     it('has pluginId and default user', async () => {
@@ -56,8 +56,28 @@ describe('createMockQuox', () => {
         await expect(q.fetch('../other/x')).rejects.toThrow(/relative/);
     });
 
-    it('memory save/search', async () => {
+    it('memory and aee reject not_available by default, sending nothing', async () => {
         const q = createMockQuox();
+        await expect(q.memory.save({ type: 'fact', content: 'x' })).rejects.toThrow('not_available: memory');
+        await expect(q.memory.search('x')).rejects.toThrow('not_available: memory');
+        await expect(q.aee.emit('x.y', {})).rejects.toThrow('not_available: aee');
+        expect(q.memoryStore).toHaveLength(0);
+        expect(q.aeeLog).toHaveLength(0);
+    });
+
+    it('permission check comes before not_available', async () => {
+        const q = createMockQuox({ strictPermissions: true });
+        await expect(q.memory.save({})).rejects.toThrow('permission_denied: memory');
+        const g = createMockQuox({ permissions: ['aee'] });
+        await expect(g.aee.emit('i', {})).rejects.toThrow('not_available: aee');
+    });
+
+    it('NOT_AVAILABLE_METHODS lists memory.save, memory.search, aee.emit', () => {
+        expect(Object.keys(NOT_AVAILABLE_METHODS).sort()).toEqual(['aee.emit', 'memory.save', 'memory.search']);
+    });
+
+    it('memory save/search (simulateUnavailable:false, future behaviour)', async () => {
+        const q = createMockQuox({ simulateUnavailable: false });
         await q.memory.save({ type: 'fact', content: 'the sky is blue' });
         await q.memory.save({ type: 'fact', content: 'grass is green' });
         const r = await q.memory.search('sky');
@@ -65,8 +85,8 @@ describe('createMockQuox', () => {
         expect(q.memoryStore).toHaveLength(2);
     });
 
-    it('logs aee, notify, navigate', async () => {
-        const q = createMockQuox();
+    it('logs aee (simulateUnavailable:false), notify, navigate', async () => {
+        const q = createMockQuox({ simulateUnavailable: false });
         await q.aee.emit('x.y', { a: 1 });
         await q.notify('hi');
         await q.notify('bad', 'error');

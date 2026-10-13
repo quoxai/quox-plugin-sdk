@@ -26,6 +26,10 @@ const PERMISSION_FOR_METHOD = Object.freeze({
     notify: 'notifications',
 });
 
+// Mirrors NOT_AVAILABLE_METHODS in quox-plugin-sdk: the host exposes these but
+// the collector has no route, so they reject after the permission gate.
+const NOT_AVAILABLE = Object.freeze({ 'memory.save': 'memory', 'memory.search': 'memory', 'aee.emit': 'aee' });
+
 function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissions } = {}) {
     // manifest.permissions, fail-closed like the host. `permissions: undefined`
     // (no manifest passed at all) grants nothing, exactly as a missing field does in prod.
@@ -102,18 +106,9 @@ function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissio
             });
             return { status: res.status, ok: res.ok, body: await res.text() };
         },
-        async 'memory.save'({ entry }) {
-            state.memory.push({ ...(entry || {}), source: `plugin:${pluginId}` });
-            return { success: true };
-        },
-        async 'memory.search'({ query, limit }) {
-            const q = String(query || '').toLowerCase();
-            const results = state.memory
-                .filter((m) => JSON.stringify(m).toLowerCase().includes(q))
-                .slice(0, limit || 10);
-            return { results };
-        },
-        async 'aee.emit'({ intent, payload }) { state.aee.push({ intent, payload }); return { success: true }; },
+        async 'memory.save'() { throw new Error(`not_available: ${NOT_AVAILABLE['memory.save']}`); },
+        async 'memory.search'() { throw new Error(`not_available: ${NOT_AVAILABLE['memory.search']}`); },
+        async 'aee.emit'() { throw new Error(`not_available: ${NOT_AVAILABLE['aee.emit']}`); },
         async navigate() { return true; },
         async notify({ message, type }) { state.notifications.push({ message, type }); return true; },
         async getUser() { return { ...devUser }; },
@@ -131,4 +126,4 @@ function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissio
     };
 }
 
-module.exports = { createDevRpc, PERMISSION_FOR_METHOD };
+module.exports = { createDevRpc, PERMISSION_FOR_METHOD, NOT_AVAILABLE };

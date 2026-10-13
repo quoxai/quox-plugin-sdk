@@ -1,6 +1,6 @@
 # Integrating a Third-Party Service
 
-Connection status, item cards and metrics from a third-party service, plus a memory panel.
+Connection status, item cards and metrics from a third-party service, plus a notes panel.
 
 ## 1. Scaffold
 
@@ -16,7 +16,7 @@ Files specific to this template: views/MainView.jsx, views/SettingsPanel.jsx, co
 ```jsx
 const [status, items] = await Promise.all([api('/status'), api('/items')]);
 ```
-The memory panel (`AgentSidebar.jsx`) uses `getQuox().memory.save` and `memory.search`. The specialist agent in `manifest.json` chats in the host's own surface; the sandbox cannot embed it.
+The notes panel (`AgentSidebar.jsx`) keeps notes in plugin storage. `window.quox.memory` is coming but is not available to community plugins yet (calls reject with `not_available`), so use storage or your own backend meanwhile. The specialist agent in `manifest.json` chats in the host's own surface; the sandbox cannot embed it.
 
 Every call can fail (backend down, host refusal, missing permission), so every view renders an error banner with a Retry button.
 
@@ -34,7 +34,7 @@ Preview with the mocked host. Then confirm for real by building and installing.
 
 ## 5. Extend it
 
-Add `POST /items` to your backend and a form that calls `api('/items', { method: 'POST', body })`, then `getQuox().aee.emit` for the audit (add `"aee"` to `permissions` in `manifest.json` first, or the host refuses the call).
+Add `POST /items` to your backend and a form that calls `api('/items', { method: 'POST', body })`. `window.quox.aee` is not available to community plugins yet (calls reject with `not_available`), so do any audit logging in your backend.
 
 ## 6. Ship it
 

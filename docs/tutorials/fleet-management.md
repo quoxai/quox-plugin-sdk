@@ -14,10 +14,9 @@ Files specific to this template: views/MainView.jsx, views/SettingsPanel.jsx, co
 ## 2. How it works
 
 ```jsx
-await getQuox().aee.emit('host-console.host.restart', { hostId, hostname, action });
 await api('/hosts/' + id + '/restart', { method: 'POST' });
 ```
-The audit envelope goes first: if the host refuses it, nothing is executed. Declare the intents under `capabilities.aeeIntents` and grant the `aee` permission.
+`window.quox.aee` (audit envelopes) is coming but is not available to community plugins yet (calls reject with `not_available`), so the template does not use it and does not declare the `aee` permission. Meanwhile, record your audit trail in your own plugin backend.
 
 Every call can fail (backend down, host refusal, missing permission), so every view renders an error banner with a Retry button.
 

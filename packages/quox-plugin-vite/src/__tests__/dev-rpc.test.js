@@ -18,18 +18,15 @@ describe('dev rpc mock (answers window.quox calls)', () => {
         expect(await rpc.handle('storage.keys', {})).toEqual(['b']);
     });
 
-    it('memory.save then memory.search honours limit', async () => {
+    it('memory.* and aee.emit reject not_available after the permission gate', async () => {
         const rpc = make();
-        for (let i = 0; i < 3; i++) await rpc.handle('memory.save', { entry: { content: `note ${i} alpha` } });
-        const r = await rpc.handle('memory.search', { query: 'alpha', limit: 2 });
-        expect(r.results).toHaveLength(2);
-        expect((await rpc.handle('memory.search', { query: 'zzz' })).results).toEqual([]);
-    });
-
-    it('aee.emit records the envelope and acks', async () => {
-        const rpc = make();
-        expect(await rpc.handle('aee.emit', { intent: 'x.y', payload: { a: 1 } })).toEqual({ success: true });
-        expect(rpc.state.aee).toEqual([{ intent: 'x.y', payload: { a: 1 } }]);
+        await expect(rpc.handle('memory.save', { entry: { content: 'x' } })).rejects.toThrow('not_available: memory');
+        await expect(rpc.handle('memory.search', { query: 'x' })).rejects.toThrow('not_available: memory');
+        await expect(rpc.handle('aee.emit', { intent: 'x.y', payload: {} })).rejects.toThrow('not_available: aee');
+        expect(rpc.state.memory).toEqual([]);
+        expect(rpc.state.aee).toEqual([]);
+        const denied = createDevRpc({ pluginId: 'my-plugin', permissions: [] });
+        await expect(denied.handle('memory.save', { entry: {} })).rejects.toThrow('permission_denied: memory');
     });
 
     it('getUser returns the dev user and is overridable', async () => {

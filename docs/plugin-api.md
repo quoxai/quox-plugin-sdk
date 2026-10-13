@@ -83,12 +83,16 @@ The global `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource` are blocked 
 
 ### `quox.memory`
 
+> Not available yet. @experimental: the host exposes these methods but community plugins cannot use them yet. After the `memory` permission check passes, every call rejects with `Error('not_available: memory')` and nothing is sent. Use `quox.storage` or your plugin's own backend meanwhile. Do not build on the example below.
+
 ```js
 await quox.memory.save({ type: 'observation', content: 'Customer prefers email', tags: ['crm'] });
 const hits = await quox.memory.search('customer preferences', 10);
 ```
 
 ### `quox.aee`
+
+> Not available yet. @experimental: after the `aee` permission check passes, `emit` rejects with `Error('not_available: aee')` and nothing is sent. Use your plugin's own backend for audit logging meanwhile.
 
 ```js
 await quox.aee.emit('my-plugin.report.generated', { reportId: 'r1' });
@@ -145,8 +149,8 @@ The sandbox host enforces `manifest.permissions` on every `window.quox` call, fa
 |------|-------------------|
 | `storage.get`, `storage.set`, `storage.remove`, `storage.keys`, `storage.getAll` | `storage` |
 | `fetch` | `network` |
-| `memory.save`, `memory.search` | `memory` |
-| `aee.emit` | `aee` |
+| `memory.save`, `memory.search` | `memory` (not available yet: rejects `not_available`) |
+| `aee.emit` | `aee` (not available yet: rejects `not_available`) |
 | `notify` | `notifications` |
 | `navigate`, `getUser`, `onEvent` | none |
 
@@ -187,7 +191,7 @@ it('saves a preference', async () => {
 });
 ```
 
-Defaults: `getUser()` returns `{ userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' }` (override with `user`), and `fetch` returns 404 unless you pass a handler. Inspection helpers: `storageMap`, `memoryStore`, `aeeLog`, `notifyLog`, `navigateLog`, `registered`, and `emitEvent(method, args)` to drive `onEvent`. `installMockQuox()` also installs `window.usePluginApi` and a recording `window.__quoxPluginRegister`.
+Defaults: `getUser()` returns `{ userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' }` (override with `user`), and `fetch` returns 404 unless you pass a handler. `memory.*` and `aee.emit` reject with `not_available: memory` / `not_available: aee` (after the permission check), like the host today; pass `simulateUnavailable: false` only to test future behaviour. `NOT_AVAILABLE_METHODS` (exported from `quox-plugin-sdk`) lists them. Inspection helpers: `storageMap`, `memoryStore`, `aeeLog`, `notifyLog`, `navigateLog`, `registered`, and `emitEvent(method, args)` to drive `onEvent`. `installMockQuox()` also installs `window.usePluginApi` and a recording `window.__quoxPluginRegister`.
 
 `createMockQuox(opts)` builds the mock without installing it.
 

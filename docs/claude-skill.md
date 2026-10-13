@@ -39,7 +39,7 @@ Helps edit your plugin manifest. Covers all available fields: configSchema, safe
 Diagnoses common plugin issues:
 
 - Dark theme / invisible elements (currentColor SVGs, low opacity)
-- Missing permissions (storage, network, memory, aee)
+- Missing permissions (storage, network)
 - Build failures (adm-zip missing, manifest not found)
 - Storage not persisting (pluginId mismatch, localStorage limits)
 
@@ -52,7 +52,6 @@ Diagnoses common plugin issues:
 Guides adding new capabilities to an existing plugin:
 
 - Add views, backend services, agent tools
-- Wire AEE events, memory integration
 - Add settings panels, config schemas
 
 ### Review

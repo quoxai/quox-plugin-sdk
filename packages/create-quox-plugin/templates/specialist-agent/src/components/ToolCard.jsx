@@ -1,12 +1,12 @@
 /**
  * ToolCard: tool name, description, expandable parameter form and Run button.
  *
- * Run records an audit envelope (getQuox().aee.emit) and asks YOUR backend to
- * execute the tool: POST /tools/<name>/run with the parameters. The sandbox
- * cannot run tools itself. Result and failure are both shown on the card.
+ * Run asks YOUR backend to execute the tool: POST /tools/<name>/run with the
+ * parameters. The sandbox cannot run tools itself. window.quox.aee is not
+ * available to community plugins yet (it rejects not_available), so write your
+ * own audit trail in your backend until it ships. Result and failure are both shown on the card.
  */
 
-import { getQuox } from 'quox-plugin-sdk';
 import { api, toast } from '../lib/api';
 import { ErrorBanner } from '../lib/ui';
 
@@ -28,7 +28,6 @@ export default function ToolCard({ tool }) {
         setError(null);
         setResult(null);
         try {
-            await getQuox().aee.emit('${pluginName}.tool.run', { tool: tool.name, params });
             const out = await api('/tools/' + encodeURIComponent(tool.name) + '/run', { method: 'POST', body: { params } });
             setResult(out);
             toast(shortName + ' completed', 'success');

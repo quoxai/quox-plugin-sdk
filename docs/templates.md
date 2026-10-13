@@ -8,11 +8,11 @@
 |----------|----------|----------------------|--------------------|
 | `basic` | Hello world, learning the sandbox | sidebar, storage, notifications, network | `getUser()` plus a counter in plugin storage |
 | `monitoring-dashboard` | Service status | + network | Polls `GET /status` on your backend, status table |
-| `fleet-management` | Hosts with destructive actions | + network, aee, tools | Host table, confirm modal, `aee.emit` audit, `POST /hosts/<id>/<action>` |
-| `service-bridge` | Third-party integration | + network, tools, memory | Items and metrics from your backend, memory panel |
+| `fleet-management` | Hosts with destructive actions | + network, tools | Host table, confirm modal, `POST /hosts/<id>/<action>` |
+| `service-bridge` | Third-party integration | + network, tools | Items and metrics from your backend, notes panel (plugin storage) |
 | `ui-feature` | Client-side tool | sidebar, storage, notifications, network | Card grid persisted in plugin storage |
-| `enterprise-extension` | Tiers, usage, backend | + network, memory | Usage meters, memory search, upgrade gates, backend skeleton |
-| `specialist-agent` | Agent with tools and persona | + network, aee, tools | Agent status, tool runner, ask-the-agent panel |
+| `enterprise-extension` | Tiers, usage, backend | + network | Usage meters, upgrade gates, backend skeleton |
+| `specialist-agent` | Agent with tools and persona | + network, tools | Agent status, tool runner, ask-the-agent panel |
 | `agentic-team` | Multi-agent team | + network, tools | Members, policies, task queue, chat with the lead |
 
 Each manifest declares exactly the permissions its code uses (the host refuses undeclared calls, see [Permissions](./plugin-api.md#permissions)); a test scaffolds every template and checks declared equals used. `tools` and `sidebar` are declarative and not enforced on calls.
@@ -58,7 +58,7 @@ Common to all: `manifest.json`, `package.json`, `vite.config.js`, `README.md`, `
 | `basic` | none |
 | `monitoring-dashboard` | `views/SettingsPanel.jsx`, `hooks/usePolling.js`, `data/mock.js` |
 | `fleet-management` | `views/SettingsPanel.jsx`, `components/ConfirmModal.jsx`, `data/mock.js` |
-| `service-bridge` | `views/SettingsPanel.jsx`, `components/AgentSidebar.jsx` (memory panel), `data/mock.js` |
+| `service-bridge` | `views/SettingsPanel.jsx`, `components/AgentSidebar.jsx` (notes panel), `data/mock.js` |
 | `ui-feature` | `views/SettingsPanel.jsx`, `components/EmptyState.jsx`, `data/mock.js` |
 | `enterprise-extension` | `views/SettingsPanel.jsx`, `components/UsageMeter.jsx`, `components/UpgradeGate.jsx`, `data/mock.js`, `backend/`, `Dockerfile` |
 | `specialist-agent` | `agent/{agentDef,agentPersona,tools}.js`, `views/SettingsPanel.jsx`, `components/{AgentStatusCard,ToolCard,AgentChat}.jsx`, `data/mock.js` |

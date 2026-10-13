@@ -1,6 +1,6 @@
 # Building an Enterprise Plugin
 
-Usage meters, memory search, feature cards and upgrade gates, with a backend skeleton and Dockerfile.
+Usage meters, feature cards and upgrade gates, with a backend skeleton and Dockerfile.
 
 ## 1. Scaffold
 
@@ -16,8 +16,9 @@ Files specific to this template: views/MainView.jsx, views/SettingsPanel.jsx, co
 ```jsx
 const user = useLoad(() => getQuox().getUser());      // tier: free | pro | enterprise
 const usage = useLoad(() => api('/usage'));
-const found = await getQuox().memory.search(query, 10);
 ```
+`window.quox.memory` is coming but is not available to community plugins yet (calls reject with `not_available`). Meanwhile keep data in plugin storage (`getQuox().storage`) or your own backend. The backend skeleton serves `GET /usage` and `GET /health`, exactly what the views fetch (the host proxies `quox.fetch('/usage')` to your backend's `/usage`).
+
 `UpgradeGate` only dims a card and names the tier. It is display, not enforcement: your backend must check the caller's tier.
 
 Every call can fail (backend down, host refusal, missing permission), so every view renders an error banner with a Retry button.

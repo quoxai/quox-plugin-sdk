@@ -91,6 +91,19 @@ describe('scaffolded templates follow the community sandbox model', () => {
                 expect(declared).toEqual(usedPermissions(src).sort());
             });
 
+            it('no source or bundle input uses window.quox memory or aee (not available to community plugins yet)', () => {
+                const hits = [];
+                for (const rel of walk(dirs[t])) {
+                    if (!/\.(jsx|js)$/.test(rel) || rel.startsWith('backend/')) continue;
+                    const text = fs.readFileSync(path.join(dirs[t], rel), 'utf8');
+                    if (/\.\s*memory\s*\.\s*(save|search)\b|\.\s*aee\s*\.\s*emit\b/.test(text)) hits.push(rel);
+                }
+                expect(hits).toEqual([]);
+                const manifest = JSON.parse(fs.readFileSync(path.join(dirs[t], 'manifest.json'), 'utf8'));
+                expect(manifest.permissions).not.toContain('memory');
+                expect(manifest.permissions).not.toContain('aee');
+            });
+
             it('registers through registerPlugin from quox-plugin-sdk', () => {
                 const idx = fs.readFileSync(path.join(dirs[t], 'src/index.jsx'), 'utf8');
                 expect(idx).toMatch(/import \{ registerPlugin \} from 'quox-plugin-sdk'/);
@@ -201,6 +214,43 @@ describe('scaffolded templates follow the community sandbox model', () => {
         const readme = fs.readFileSync(path.join(dir, 'README.md'), 'utf8');
         expect(readme).toContain('npm run sign');
         expect(readme).toContain('Provenance');
+    });
+});
+
+describe('enterprise-extension backend', () => {
+    let root, dir;
+    beforeAll(() => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'quox-ent-backend-'));
+        const res = scaffold(root, 't-ent', 'enterprise-extension');
+        expect(res.status, res.stderr).toBe(0);
+        dir = res.dir;
+    });
+    afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+    it('serves a route for every path the views fetch, plus /health', () => {
+        const server = fs.readFileSync(path.join(dir, 'backend/server.js'), 'utf8');
+        const routes = new Set([...server.matchAll(/app\.(get|post|put|delete)\(\s*'([^']+)'/g)].map(m => `${m[1].toUpperCase()} ${m[2]}`));
+        const fetched = new Set();
+        for (const rel of walk(path.join(dir, 'src'))) {
+            if (!/^(views|components)\/.*\.(jsx|js)$/.test(rel)) continue;
+            const text = fs.readFileSync(path.join(dir, 'src', rel), 'utf8');
+            for (const m of text.matchAll(/\bapi\(\s*'(\/[^']*)'(?:\s*,\s*\{[^}]*method:\s*'([A-Z]+)')?/g)) fetched.add(`${m[2] || 'GET'} ${m[1]}`);
+        }
+        expect([...fetched].length).toBeGreaterThan(0);
+        for (const f of fetched) expect(routes, f).toContain(f);
+        expect(routes).toContain('GET /health');
+    });
+
+    it('manifest.backend port matches server.js, Dockerfile builds from emitted files', () => {
+        const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+        expect(manifest.backend).toEqual({ image: 't-ent-backend:latest', healthPath: '/health', port: 8080 });
+        const server = fs.readFileSync(path.join(dir, 'backend/server.js'), 'utf8');
+        expect(server).toMatch(/process\.env\.PORT \|\| 8080/);
+        const docker = fs.readFileSync(path.join(dir, 'Dockerfile'), 'utf8');
+        expect(docker).toContain('COPY backend/package.json');
+        const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'backend/package.json'), 'utf8'));
+        expect(pkg.dependencies.express).toBeTruthy();
+        expect(pkg.scripts.start).toBe('node server.js');
     });
 });
 

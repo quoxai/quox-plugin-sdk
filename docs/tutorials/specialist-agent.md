@@ -14,9 +14,10 @@ Files specific to this template: agent/{agentDef,agentPersona,tools}.js, views/*
 ## 2. How it works
 
 ```jsx
-await getQuox().aee.emit('scan-agent.tool.run', { tool: tool.name, params });
 const out = await api('/tools/' + tool.name + '/run', { method: 'POST', body: { params } });
 ```
+`window.quox.aee` is coming but is not available to community plugins yet (calls reject with `not_available`), so Run does not emit an envelope and the template does not declare the `aee` permission. Meanwhile, log tool runs in your own plugin backend.
+
 The agent definition, persona and tool schemas are declared in `manifest.json` (and mirrored in `src/agent/`). The plugin is the UI for them.
 
 Every call can fail (backend down, host refusal, missing permission), so every view renders an error banner with a Retry button.

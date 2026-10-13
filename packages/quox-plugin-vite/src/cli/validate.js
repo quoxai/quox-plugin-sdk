@@ -93,6 +93,9 @@ function checkPermissions(code, manifest) {
             warnings.push(`manifest.json declares the "${perm}" permission but the bundle does not appear to use it. Remove it for least privilege.`);
         }
     }
+    if (used.includes('memory') || used.includes('aee')) {
+        warnings.push('memory/aee are not available to community plugins yet; calls will reject with not_available');
+    }
     return { errors, warnings };
 }
 

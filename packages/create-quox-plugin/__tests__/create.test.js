@@ -130,10 +130,10 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.capabilities.aeeIntents.length).toBeGreaterThan(0);
         });
 
-        it('includes aee and tools permissions', () => {
+        it('includes tools permission (no aee: not available to community plugins yet)', () => {
             const dir = scaffold('test-fleet', 'fleet-management');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toContain('aee');
+            expect(manifest.permissions).not.toContain('aee');
             expect(manifest.permissions).toContain('tools');
         });
     });
@@ -171,10 +171,10 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.marketingPoints.length).toBeGreaterThan(0);
         });
 
-        it('includes memory permission', () => {
+        it('does not declare memory (not available to community plugins yet)', () => {
             const dir = scaffold('test-bridge', 'service-bridge');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toContain('memory');
+            expect(manifest.permissions).not.toContain('memory');
         });
     });
 
@@ -252,10 +252,10 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.configSchema.advancedAnalytics.enterprise).toBe(true);
         });
 
-        it('includes memory permission (no aee: never used)', () => {
+        it('declares neither memory nor aee (not available to community plugins yet)', () => {
             const dir = scaffold('test-enterprise', 'enterprise-extension');
             const manifest = readManifest(dir);
-            expect(manifest.permissions).toContain('memory');
+            expect(manifest.permissions).not.toContain('memory');
             expect(manifest.permissions).not.toContain('aee');
         });
     });
@@ -329,11 +329,11 @@ describe('create-quox-plugin scaffolder', () => {
             expect(manifest.specialist.capabilities.length).toBeGreaterThan(0);
         });
 
-        it('includes tools and aee (no memory: never used) permissions', () => {
+        it('includes tools but neither aee nor memory (not available yet) permissions', () => {
             const dir = scaffold('test-agent', 'specialist-agent');
             const manifest = readManifest(dir);
             expect(manifest.permissions).toContain('tools');
-            expect(manifest.permissions).toContain('aee');
+            expect(manifest.permissions).not.toContain('aee');
             expect(manifest.permissions).not.toContain('memory');
         });
 
