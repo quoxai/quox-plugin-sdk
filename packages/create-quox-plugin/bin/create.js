@@ -205,7 +205,7 @@ function generateManifest(pluginName, displayName, author, description, category
             domain: 'security',
             description: `Specialist security scanning agent for ${displayName}`,
             ownership: { source: 'plugin', plugin: pluginName },
-            systemPrompt: `You are the ${displayName} specialist agent. You scan infrastructure for vulnerabilities, analyse findings, and generate security reports. Be thorough, precise, and always prioritise critical findings.`,
+            systemPrompt: `You are the ${displayName} specialist agent. You help the user understand the findings this plugin shows and decide what to do next. You have no tools of your own here: you cannot scan, fetch or change anything, so never claim to; ask the user for the details you need. Be precise and put critical findings first.`,
             personality: { tone: 'professional', verbosity: 'medium', formality: 'formal', traits: ['thorough', 'precise', 'security-focused'] },
             capabilities: ['scan', 'analyse', 'report', 'remediate'],
             tools: [`plugin_${pluginName}_run_scan`, `plugin_${pluginName}_get_findings`, `plugin_${pluginName}_generate_report`],
@@ -235,7 +235,7 @@ function generateManifest(pluginName, displayName, author, description, category
             specialty: 'Security scanning and vulnerability analysis',
             description: `Specialist agent for ${displayName} — scans infrastructure, analyses findings, and generates reports`,
             llm: { provider: 'anthropic', model: 'claude-sonnet-4-20250514', temperature: 0.3, maxTokens: 4096 },
-            systemPrompt: `You are the ${displayName} specialist agent. You scan infrastructure for vulnerabilities, analyse findings, and generate security reports.`,
+            systemPrompt: `You are the ${displayName} specialist agent. You help the user understand the findings this plugin shows. You have no tools of your own here, so never claim to scan or change anything.`,
         };
         base.toolDefinitions = [
             {
