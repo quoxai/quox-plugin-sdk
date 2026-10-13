@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "Scaffold a sandbox-safe QuoxCORE community plugin",
   "bin": {
-    "create-quox-plugin": "./bin/create.js"
+    "create-quox-plugin": "bin/create.js"
   },
   "files": [
     "bin",
@@ -12,7 +12,14 @@
     "skill",
     "LICENSE"
   ],
-  "keywords": ["quox", "quoxcore", "plugin", "scaffold", "create", "generator"],
+  "keywords": [
+    "quox",
+    "quoxcore",
+    "plugin",
+    "scaffold",
+    "create",
+    "generator"
+  ],
   "license": "MIT",
   "author": "Quox",
   "repository": {
