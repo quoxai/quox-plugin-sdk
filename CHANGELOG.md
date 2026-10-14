@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.4.1 (2026-10-14)
+
+Release-process only: the first `@quoxai` release published from GitHub Actions
+with npm provenance (trusted publishing). The code is the same as 0.4.0.
+
+## 0.4.0 (2026-10-14)
 
 ### Changed: packages are scoped under @quoxai
 

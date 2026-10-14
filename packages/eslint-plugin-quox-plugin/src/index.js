@@ -10,11 +10,15 @@
  */
 import noCacheAsPrimaryStorage from './rules/no-cache-as-primary-storage.js';
 import noHostOnlyGlobals from './rules/no-host-only-globals.js';
+import { createRequire } from 'node:module';
+
+// meta.version tracks package.json, so a release bump never leaves it stale.
+const { version } = createRequire(import.meta.url)('../package.json');
 
 const plugin = {
     meta: {
         name: '@quoxai/eslint-plugin',
-        version: '0.4.0',
+        version,
     },
     rules: {
         'no-cache-as-primary-storage': noCacheAsPrimaryStorage,
