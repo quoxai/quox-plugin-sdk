@@ -1,0 +1,44 @@
+name: publish
+# Publishes the four packages to npm with provenance when a v* tag is pushed.
+# Uses npm trusted publishing (GitHub OIDC): no npm token is stored anywhere.
+# One-time setup per package on npmjs.com: Settings > Trusted publishing >
+# GitHub Actions, repository quoxai/quox-plugin-sdk, workflow publish.yml,
+# environment npm. A version already on the registry is skipped, so a re-run
+# is safe.
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@^11.5.1
+      - run: npm ci
+      - run: npm test
+      - run: npm run check:pack
+      - name: Tag matches package versions
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          for p in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
+            v=$(node -p "require('./packages/$p/package.json').version")
+            [ "$v" = "$want" ] || { echo "::error::$p is $v, tag is $want"; exit 1; }
+          done
+      - name: Publish (dependencies first)
+        run: |
+          for p in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
+            v=$(node -p "require('./packages/$p/package.json').version")
+            if npm view "$p@$v" version >/dev/null 2>&1; then echo "$p@$v already published, skipping"; continue; fi
+            (cd "packages/$p" && npm publish --provenance --access public)
+          done
