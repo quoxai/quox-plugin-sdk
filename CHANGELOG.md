@@ -24,6 +24,14 @@ All four packages move together: `quox-plugin-sdk`, `quox-plugin-vite`,
   manifest and files, and warns on a v1-only signature.
 - Docs: org-scoped revocation of a signer key or a bundle digest
   (`quox plugin revocations ...`), served by QuoxCORE hosts that include it.
+- `quox-plugin validate` warns when `backend.image` is not digest-pinned
+  (`<image>@sha256:<digest>`). Hosts that run community backends refuse an
+  unpinned image, because the signature would then not fix what runs.
+- Docs: docs/backend-plugins.md rewritten for the community backend rules
+  (signature v2, trusted unrevoked key, digest-pinned image, isolation, the
+  per-plugin credential) and where backends run today: managed Quox instances;
+  self-hosted installs from the public quoxcore release do not run plugin
+  backends yet.
 
 ### Changed
 - `quox-plugin sign` now requires `manifest.json` with a string `id` and

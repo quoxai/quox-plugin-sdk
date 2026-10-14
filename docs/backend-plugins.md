@@ -1,176 +1,129 @@
-# Backend Plugins (Tier 2)
+# Backend plugins
 
-Some plugins need server-side logic — database access, long-running tasks, external API integrations, or custom agent tools. These "Tier 2" plugins include a backend Docker container that runs alongside QuoxCORE.
+Some plugins need server-side logic: a database, long-running work, or calls to
+external APIs. Such a plugin ships a backend container image alongside its
+sandboxed UI. The Quox host starts the container, isolates it, and proxies the
+plugin's `quox.fetch()` calls to it.
 
-## Architecture
+## Where backends run today
+
+The host component that starts plugin backends (powers-host) is part of
+managed Quox instances. **Self-hosted installs from the public quoxcore release
+do not include it yet, so they cannot run any plugin backend, official or
+community.** On those installs a plugin with a `backend` still installs and its
+UI runs; its backend calls fail until the host gains the component.
+
+## What a community backend needs
+
+A community plugin's backend starts only when every one of these holds, checked
+by the host each time the backend is started (and at host boot):
+
+1. **Signature v2.** The bundle was signed with `quox-plugin-vite` 0.3.0 or
+   later (`npx quox-plugin sign`). A v2 signature binds the manifest, so the
+   backend image cannot be swapped after signing. A 0.2.0 (v1) signature binds
+   the bundle only, and the host refuses to install a v1-signed plugin that
+   declares a backend.
+2. **A trusted key.** The org admin has trusted your public key
+   (`quox plugin trusted-keys add`).
+3. **Not revoked.** Neither your signing key nor this bundle digest is on the
+   org's revocation list (`quox plugin revocations`). Revoking either stops a
+   running backend the next time the host checks it.
+4. **A digest-pinned image.** `backend.image` must be content-addressed:
+   `registry.example.com/acme/monitor@sha256:<64 hex>`. A tag such as `:latest`
+   is refused, because whoever controls the tag could change what runs under
+   your valid signature.
+5. **Every install agrees.** A backend is one container per plugin id on the
+   instance. If any org's install of that id fails these checks, the backend
+   does not run for anyone.
+
+```json
+{
+  "backend": {
+    "image": "registry.example.com/acme/monitor@sha256:3f0c...e9a1",
+    "port": 8080,
+    "healthPath": "/health"
+  }
+}
+```
+
+Get the digest after you push: `docker buildx imagetools inspect <image>:<tag>`
+or the `digest:` line `docker push` prints. Re-sign after changing the manifest.
+
+## What the host does with it
 
 ```
-Browser (Plugin UI)
-    ↓ api.fetch('/api/data')
-QuoxCORE Collector (proxy)
-    ↓ /api/v1/plugins/{pluginId}/api/data
-Plugin Container (your backend)
-    ↓
-Your logic, database, external APIs
+Browser (plugin UI, sandboxed iframe)
+    | quox.fetch('/usage')
+Quox collector (gateway, rate limit, identity headers)
+    | http://plugin-<id>:<port>/usage
+Your backend container
 ```
 
-The collector proxies all requests, adding:
-- Rate limiting (default: 60 req/min per plugin)
-- Authentication headers (`X-User-Id`, `X-User-Email`)
-- Plugin identification (`X-Plugin-Id`)
-- Health monitoring
+- **Pull.** If the image is not present, the host pulls it by digest. A pull is
+  bounded by a timeout; a failed pull backs off (1 minute, doubling to 30
+  minutes) instead of retrying on every request.
+- **Isolation.** The container runs as a non-root user with all capabilities
+  dropped, on its own network. It can reach the Quox collector and the public
+  internet. It cannot reach other Quox services, other plugins, the host, the
+  LAN, a tailnet, or cloud metadata addresses.
+- **Limits.** Memory and CPU are capped per container (instance defaults 1 GiB
+  and 2 CPUs).
+- **Restart.** The container does not auto-restart on its own. After a host
+  reboot the host recreates it once its network fence is in place, so there is
+  a short window after boot where the backend is not running.
+- **Identity.** Each proxied request carries `X-Plugin-Id`, `X-User-Id`,
+  `X-Org-Id` (derived from the verified session, never from the client) and
+  `X-Quox-Org-Ticket`, a short-lived signed ticket for that org and user.
+- **Credential.** The container receives `QUOX_HOST_LLM_URL` and a per-plugin
+  credential in `QUOX_HOST_LLM_KEY`. It is accepted only on the host chat and
+  evidence routes, and only for an org when you send back the request's
+  `X-Quox-Org-Ticket`. Without a ticket it can only write instance-scoped
+  evidence. It is never the instance's own service key.
 
-## Creating a Backend Plugin
+## Not available to community backends yet
 
-### 1. Scaffold with the enterprise-extension template (it ships a backend/)
+- **Agent tools.** A backend's `/tools.json` is loaded into agents only for
+  official plugins. Community agent tools need org-scoped registration first.
+- **Host memory and `quox.aee.emit` from the UI** still reject with
+  `not_available` (see [plugin-api.md](plugin-api.md)).
+- **IPv6** is not enabled on plugin networks.
+
+## Build a backend
+
+Scaffold with a template that ships `backend/`:
 
 ```bash
 npx create-quox-plugin my-monitor --template enterprise-extension
 ```
 
-This adds a `backend` field to your manifest:
-
-```json
-{
-    "backend": {
-        "image": "my-monitor-backend:latest",
-        "healthPath": "/health",
-        "port": 8080
-    }
-}
-```
-
-### 2. Build your backend
-
-Create a simple HTTP server. Example with Express:
+Any HTTP server works. Serve `healthPath` with a 2xx once you are ready:
 
 ```js
 const express = require('express');
 const app = express();
-
 app.use(express.json());
 
-app.get('/health', (req, res) => {
-    res.json({ status: 'healthy', uptime: process.uptime() });
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+app.get('/usage', (req, res) => {
+  const org = req.headers['x-org-id']; // trust only this header for the org
+  res.json({ org, monitors: 5 });
 });
 
-app.get('/api/status', (req, res) => {
-    const userId = req.headers['x-user-id'];
-    res.json({ monitors: 5, alerts: 2, user: userId });
-});
-
-app.post('/api/scan', (req, res) => {
-    const { target } = req.body;
-    // ... your logic
-    res.json({ success: true, results: [] });
-});
-
-app.listen(8080, () => console.log('Backend running on :8080'));
+app.listen(Number(process.env.PORT) || 8080);
 ```
 
-### 3. Containerise
-
 ```dockerfile
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --production
+RUN npm ci --omit=dev
 COPY . .
-EXPOSE 8080
+USER 1000:1000
 CMD ["node", "server.js"]
 ```
 
-### 4. Deploy
-
-Add your container to the QuoxCORE Docker network:
-
-```yaml
-# docker-compose.override.yml or standalone
-services:
-  plugin-my-monitor:
-    image: my-monitor-backend:latest
-    networks: [quox-network]
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-          cpus: '0.5'
-```
-
-### 5. Register with Collector
-
-```bash
-curl -X POST http://localhost:9848/api/v1/admin/plugins/my-monitor/backend \
-  -H "Content-Type: application/json" \
-  -H "X-Service-Key: YOUR_INTERNAL_SERVICE_KEY" \
-  -d '{
-    "url": "http://plugin-my-monitor:8080",
-    "healthPath": "/health",
-    "rateLimit": 60
-  }'
-```
-
-### 6. Verify
-
-```bash
-# Check health
-curl http://localhost:9848/api/v1/admin/plugins/my-monitor/health
-
-# Test proxy
-curl http://localhost:9848/api/v1/plugins/my-monitor/api/status
-```
-
-## Admin API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/v1/admin/plugins/:id/backend` | Register backend URL + config |
-| `DELETE` | `/api/v1/admin/plugins/:id/backend` | Unregister backend |
-| `GET` | `/api/v1/admin/plugins/backends` | List all registered backends |
-| `GET` | `/api/v1/admin/plugins/:id/health` | Health check specific backend |
-| `POST` | `/api/v1/admin/plugins/:id/tools` | Register agent tools |
-
-All admin endpoints require authentication (service key or admin JWT).
-
-## Registering Agent Tools
-
-Your backend can register tools that agents (CommanderQ, etc.) can use:
-
-```bash
-curl -X POST http://localhost:9848/api/v1/admin/plugins/my-monitor/tools \
-  -H "Content-Type: application/json" \
-  -H "X-Service-Key: YOUR_KEY" \
-  -d '{
-    "tools": [
-      {
-        "name": "scan_network",
-        "description": "Scan a subnet for active hosts",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "subnet": { "type": "string", "description": "CIDR notation (e.g. 10.0.0.0/24)" }
-          },
-          "required": ["subnet"]
-        }
-      }
-    ]
-  }'
-```
-
-Tools are namespaced: `plugin_my_monitor_scan_network`. The orchestrator agent (QuoxCORE) automatically gets access to registered plugin tools.
-
-When an agent calls the tool, the collector POSTs to `http://your-backend:8080/tools/scan_network` with the input.
-
-## Resource Limits
-
-- **Memory:** Recommended 256MB max per plugin container
-- **CPU:** Recommended 0.5 CPU max
-- **Rate limit:** Default 60 requests/minute (configurable at registration)
-- **Timeout:** 30 seconds per proxied request
-
-## Health Checks
-
-The collector automatically checks your backend's health every 60 seconds. The health endpoint should return HTTP 2xx when healthy.
-
-Health status is visible at `GET /api/v1/admin/plugins/backends`.
+Push the image to a registry the instance can reach, put the digest-pinned
+reference in `manifest.json`, then `npm run build` and `npx quox-plugin sign`.
+An org admin installs the plugin and trusts your key; the backend starts when a
+user opens the plugin.

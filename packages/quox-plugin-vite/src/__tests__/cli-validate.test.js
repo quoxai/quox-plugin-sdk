@@ -63,6 +63,16 @@ describe('validate(dir)', () => {
     });
     afterEach(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
+    it('warns when backend.image is not digest-pinned (community hosts refuse it)', () => {
+        fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({ id: 'my-plugin', name: 'My', version: '1.0.0', backend: { image: 'acme/monitor:latest', port: 8080 } }));
+        const r = validate({ dir: tmp });
+        expect(r.warnings.some((w) => /backend\.image/.test(w) && /@sha256:/.test(w))).toBe(true);
+    });
+    it('no digest warning for a pinned backend.image', () => {
+        fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({ id: 'my-plugin', name: 'My', version: '1.0.0', backend: { image: 'registry.example.com/acme/monitor@sha256:' + 'a'.repeat(64), port: 8080 } }));
+        const r = validate({ dir: tmp });
+        expect(r.warnings.some((w) => /backend\.image/.test(w))).toBe(false);
+    });
     it('passes a clean project', () => {
         const r = validate({ dir: tmp });
         expect(r.errors).toEqual([]);

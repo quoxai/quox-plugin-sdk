@@ -173,6 +173,10 @@ function validate({ dir = '.' } = {}) {
             manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
             const v = validateManifest(manifest);
             if (!v.ok) errors.push(`manifest.json: ${v.message}`);
+            const image = manifest && manifest.backend && manifest.backend.image;
+            if (typeof image === 'string' && !/@sha256:[0-9a-f]{64}$/.test(image)) {
+                warnings.push(`manifest.json backend.image "${image}" is not digest-pinned. Hosts refuse to start a community backend unless the image is pinned as <image>@sha256:<digest>, so the signature fixes what runs. Push the image, put the digest in backend.image, then re-sign.`);
+            }
         } catch (e) {
             errors.push(`manifest.json is not valid JSON: ${e.message}`);
         }
