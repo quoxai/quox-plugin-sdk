@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * create-quox-plugin — Interactive scaffolder for QuoxCORE third-party plugins.
+ * @quoxai/create-quox-plugin — Interactive scaffolder for QuoxCORE third-party plugins.
  *
  * Usage:
- *   npx create-quox-plugin my-plugin
- *   npx create-quox-plugin my-plugin --template monitoring-dashboard
+ *   npx @quoxai/create-quox-plugin my-plugin
+ *   npx @quoxai/create-quox-plugin my-plugin --template monitoring-dashboard
  */
 
 const fs = require('fs');
@@ -811,15 +811,16 @@ function generateViteConfig(pluginName) {
     return renderTemplate('_shared/vite.config.js', { pluginName });
 }
 
-const SDK_RANGE = '^0.3.0';
+const SDK_RANGE = '^0.4.0';
 
 /**
  * SDK dependency specs. Default is the registry range. `localSdk` (from the explicit
- * --local-sdk flag) points at a checkout of quox-plugin-sdk and writes file: deps instead.
+ * --local-sdk flag) points at a checkout of @quoxai/quox-plugin-sdk and writes file: deps instead.
  * Never auto-detected: a scaffold must not depend on where this script happens to live.
  */
+// npm names are scoped (@quoxai/<dir>); the monorepo directories are not.
 function resolveSdkDep(pkg, localSdk) {
-    if (localSdk) return `file:${path.join(localSdk, 'packages', pkg)}`;
+    if (localSdk) return `file:${path.join(localSdk, 'packages', pkg.replace(/^@quoxai\//, ''))}`;
     return SDK_RANGE;
 }
 
@@ -836,11 +837,11 @@ function generatePackageJson(pluginName, localSdk = null) {
             sign: 'quox-plugin sign --key ./.keys/plugin-signing.pem',
         },
         dependencies: {
-            'quox-plugin-sdk': resolveSdkDep('quox-plugin-sdk', localSdk),
+            '@quoxai/quox-plugin-sdk': resolveSdkDep('@quoxai/quox-plugin-sdk', localSdk),
         },
         devDependencies: {
             '@vitejs/plugin-react': '^4.0.0',
-            'quox-plugin-vite': resolveSdkDep('quox-plugin-vite', localSdk),
+            '@quoxai/quox-plugin-vite': resolveSdkDep('@quoxai/quox-plugin-vite', localSdk),
             react: '^19.0.0',
             'react-dom': '^19.0.0',
             vite: '^7.0.0',
@@ -854,7 +855,7 @@ function generateReadme(pluginName, displayName, description) {
 ${description}
 
 A QuoxCORE **community plugin**. It runs in a sandboxed frame: no direct network, no host
-components. It talks to Quox only through \`getQuox()\` from \`quox-plugin-sdk\` (storage, fetch to
+components. It talks to Quox only through \`getQuox()\` from \`@quoxai/quox-plugin-sdk\` (storage, fetch to
 your own plugin backend, notifications, user; memory and AEE are not available yet) and is styled with the \`qx-*\` design
 system classes. Read the header comment of \`src/views/MainView.jsx\` for what this template
 does and what needs a backend.
@@ -889,7 +890,7 @@ unless the signing key is one your org trusts.
 ## Test
 
 \`\`\`js
-import { createMockQuox, installMockQuox } from 'quox-plugin-sdk/testing';
+import { createMockQuox, installMockQuox } from '@quoxai/quox-plugin-sdk/testing';
 \`\`\`
 
 \`createMockQuox\` is an in-memory stand-in for the host API, so views can be unit tested.
@@ -1013,13 +1014,13 @@ function getTemplateFiles(pluginName, displayName, author, description, category
 
 function printHelp() {
     console.log(`
-create-quox-plugin - Scaffold a new QuoxCORE plugin
+@quoxai/create-quox-plugin - Scaffold a new QuoxCORE plugin
 
 Usage:
-  npx create-quox-plugin <name>
-  npx create-quox-plugin <name> --template <template>
-  npx create-quox-plugin <name> --from-mcp "<stdio command>"
-  npx create-quox-plugin <name> --from-mcp-json <file>
+  npx @quoxai/create-quox-plugin <name>
+  npx @quoxai/create-quox-plugin <name> --template <template>
+  npx @quoxai/create-quox-plugin <name> --from-mcp "<stdio command>"
+  npx @quoxai/create-quox-plugin <name> --from-mcp-json <file>
 
 Options:
   --template <name>       Use a specific template. Available: ${TEMPLATE_NAMES.join(', ')}
@@ -1029,7 +1030,7 @@ Options:
   --from-mcp-json <file>  Migration mode (offline): read a saved tools/list result from
                           <file> instead of spawning a live MCP server.
   --local-sdk <path>      Monorepo development: depend on a local quox-plugin-sdk checkout
-                          (file: deps) instead of the published ^0.3.0 packages.
+                          (file: deps) instead of the published ^0.4.0 packages.
   --no-skill              Do not write the Claude skill to .claude/skills/quox-plugin/
   --non-interactive       Skip prompts, use defaults for anything not passed as a flag
   --help, -h              Show this help message
@@ -1054,7 +1055,7 @@ async function main() {
     if (localSdkIdx !== -1) {
         const given = args[localSdkIdx + 1];
         const root = given && !given.startsWith('-') ? path.resolve(given) : null;
-        const ok = root && ['quox-plugin-sdk', 'quox-plugin-vite']
+        const ok = root && ['quox-plugin-sdk', 'quox-plugin-vite'] // monorepo directories
             .every(p => fs.existsSync(path.join(root, 'packages', p, 'package.json')));
         if (!ok) {
             console.error('--local-sdk needs the path to a quox-plugin-sdk checkout (a directory containing packages/quox-plugin-sdk and packages/quox-plugin-vite).');

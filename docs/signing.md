@@ -7,7 +7,7 @@ authors are trusted by registering their Ed25519 public key. Once an org has at 
 trusted key, QuoxCORE accepts only bundles carrying a valid signature from one of them.
 An org with no trusted keys accepts unsigned installs.
 
-`quox-plugin-vite` ships a `quox-plugin` CLI that produces exactly the signature the host
+`@quoxai/quox-plugin-vite` ships a `quox-plugin` CLI that produces exactly the signature the host
 verifies. No extra scripts are needed.
 
 ### 1. Generate a key pair (once)
@@ -33,7 +33,7 @@ npx quox-plugin sign --key ./.keys/plugin-signing.pem
 ```
 
 `sign` writes `dist/signature.json`. Re-sign after every build and after any edit to
-`manifest.json`: the signature (v2, quox-plugin-vite 0.3.0 and later) binds the manifest
+`manifest.json`: the signature (v2: @quoxai/quox-plugin-vite, and the old quox-plugin-vite 0.3.x) binds the manifest
 and every file that ships.
 
 ```json
@@ -65,7 +65,7 @@ install and verifies against that, so a changed manifest, bundle or stylesheet i
 
 **v1 compatibility.** `digest` and `signature` are the v1 signature (bundle bytes only),
 kept so hosts that predate v2 still install your plugin. A v2-aware host ignores them when
-`signature_v2` is present. A plugin signed only with v1 (quox-plugin-vite 0.2.0) still
+`signature_v2` is present. A plugin signed only with v1 (@quoxai/quox-plugin-vite 0.2.0) still
 installs on a v2-aware host, but because a v1 signature vouches for none of the manifest,
 the host then accepts it only if the manifest asks for nothing beyond `sidebar`, `storage`
 and `notifications` and declares no `backend`. Re-sign with 0.3.0 to lift that.
@@ -126,7 +126,7 @@ org has trusted keys.
 | `manifest_mismatch` | `manifest.json` changed after signing (v2): sign again |
 | `files_mismatch` | `dist/plugin.esm.js` or `dist/plugin.css` changed, was added or was removed after signing (v2): rebuild, then sign again |
 | `digest_mismatch` | `dist/plugin.esm.js` changed after signing (v1) |
-| `manifest_unbound_permissions` | a v1 signature with a manifest asking for more than `sidebar`, `storage`, `notifications` or declaring a `backend`: re-sign with quox-plugin-vite 0.3.0 or later |
+| `manifest_unbound_permissions` | a v1 signature with a manifest asking for more than `sidebar`, `storage`, `notifications` or declaring a `backend`: re-sign with @quoxai/quox-plugin-vite (or the old quox-plugin-vite 0.3.x) |
 | `no_matching_key` | the org has not trusted this public key (step 3) |
 | `bad_signature` | the signature does not verify |
 | `revoked` (error) | the org revoked this signer key or this exact bundle |

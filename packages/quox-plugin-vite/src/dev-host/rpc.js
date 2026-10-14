@@ -11,7 +11,7 @@
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const ALLOWED_HEADERS = new Set(['content-type', 'accept']);
 
-// Same map as COMMUNITY_PERMISSION_FOR_METHOD in quox-plugin-sdk (this package is
+// Same map as COMMUNITY_PERMISSION_FOR_METHOD in @quoxai/quox-plugin-sdk (this package is
 // CommonJS and cannot import the ESM sdk, so it is mirrored; a test pins it).
 const PERMISSION_FOR_METHOD = Object.freeze({
     'storage.get': 'storage',
@@ -26,7 +26,7 @@ const PERMISSION_FOR_METHOD = Object.freeze({
     notify: 'notifications',
 });
 
-// Mirrors NOT_AVAILABLE_METHODS in quox-plugin-sdk: the host exposes these but
+// Mirrors NOT_AVAILABLE_METHODS in @quoxai/quox-plugin-sdk: the host exposes these but
 // the collector has no route, so they reject after the permission gate.
 const NOT_AVAILABLE = Object.freeze({ 'memory.save': 'memory', 'memory.search': 'memory', 'aee.emit': 'aee' });
 
@@ -116,7 +116,7 @@ function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissio
 
     return {
         state,
-        // The method set this stand-in serves; quox-plugin-sdk's frame contract
+        // The method set this stand-in serves; @quoxai/quox-plugin-sdk's frame contract
         // test pins it to the typed window.quox surface.
         methods: Object.freeze(Object.keys(handlers)),
         async handle(method, args) {

@@ -12,7 +12,7 @@ by self-declaration.
 ## Bronze: it installs and behaves
 
 - `quox-plugin validate` passes with no errors.
-- Signed with signature v2 (`quox-plugin sign`, quox-plugin-vite 0.3.0 or later),
+- Signed with signature v2 (`quox-plugin sign`, @quoxai/quox-plugin-vite, or the old quox-plugin-vite 0.3.x),
   so the manifest and every shipped file are bound to the signature.
 - `manifest.json` declares exactly the permissions the bundle uses
   (validate reports undeclared ones as errors and unused ones as warnings).
@@ -25,7 +25,7 @@ by self-declaration.
 Everything in Bronze, plus:
 
 - Automated tests that run in CI, including the plugin against
-  `quox-plugin-sdk/testing` (`createMockQuox`) for every `window.quox` call it makes.
+  `@quoxai/quox-plugin-sdk/testing` (`createMockQuox`) for every `window.quox` call it makes.
 - No `validate` warnings left unexplained (each remaining warning is justified in the README).
 - A changelog, and semantic versions: a breaking manifest or permission change is a major bump.
 - A stated support contact and a security contact.

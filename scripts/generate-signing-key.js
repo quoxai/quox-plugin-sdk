@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DEPRECATED: use the `quox-plugin` bin from quox-plugin-vite (`quox-plugin keygen` / `quox-plugin sign`) for community plugin signing. Kept for official/legacy signing flows.
+// DEPRECATED: use the `quox-plugin` bin from @quoxai/quox-plugin-vite (`quox-plugin keygen` / `quox-plugin sign`) for community plugin signing. Kept for official/legacy signing flows.
 /**
  * Generate an Ed25519 signing key pair for QuoxCORE plugin signing.
  *

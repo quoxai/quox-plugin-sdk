@@ -6,7 +6,7 @@ import os from 'os';
 
 const CREATE_SCRIPT = path.resolve(__dirname, '../bin/create.js');
 
-describe('create-quox-plugin scaffolder', () => {
+describe('@quoxai/create-quox-plugin scaffolder', () => {
     let tmpDir;
 
     beforeEach(() => {

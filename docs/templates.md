@@ -1,6 +1,6 @@
 # Plugin Templates
 
-`create-quox-plugin` ships 8 templates. All of them target the **community plugin sandbox**: the plugin runs in an isolated frame with no network of its own, talks to Quox only through `getQuox()` from `quox-plugin-sdk`, and is styled with the `qx-*` design-system classes. None of them use host-only globals, so a scaffolded plugin renders the first time it is installed.
+`@quoxai/create-quox-plugin` ships 8 templates. All of them target the **community plugin sandbox**: the plugin runs in an isolated frame with no network of its own, talks to Quox only through `getQuox()` from `@quoxai/quox-plugin-sdk`, and is styled with the `qx-*` design-system classes. None of them use host-only globals, so a scaffolded plugin renders the first time it is installed.
 
 ## Template comparison
 
@@ -19,7 +19,7 @@ Each manifest declares exactly the permissions its code uses (the host refuses u
 
 ## What every template gives you
 
-- `src/index.jsx` calls `registerPlugin` from `quox-plugin-sdk`.
+- `src/index.jsx` calls `registerPlugin` from `@quoxai/quox-plugin-sdk`.
 - `src/lib/` helpers: `api.js` (wrapper over `getQuox().fetch` and `storage`), `useLoad.js` (load state hook), `ui.jsx` (error banner, spinner, page frame), `useConfig.js` and `ConfigForm.jsx` (settings).
 - Every view shows an **error state** when an RPC fails. Nothing renders blank.
 - `README.md` in the project explaining build, validate, sign and install.

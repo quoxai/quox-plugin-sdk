@@ -5,7 +5,7 @@ A card grid with add and remove, persisted in plugin storage, with a settings pa
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin action-tracker --template ui-feature
+npx @quoxai/create-quox-plugin action-tracker --template ui-feature
 cd action-tracker && npm install
 ```
 

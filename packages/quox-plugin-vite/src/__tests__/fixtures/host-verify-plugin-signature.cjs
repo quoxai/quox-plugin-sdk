@@ -29,7 +29,7 @@ const HEX128 = /^[0-9a-f]{128}$/;
  * Verify a plugin signature against the org's trusted keys.
  *
  * Two formats (SDK-TEAM W5, 2026-10-13):
- *   v2 (quox-plugin-vite >= 0.3.0): `signature_v2` over canonicalJson of
+ *   v2 (quox-plugin-vite >= 0.3.0, now @quoxai/quox-plugin-vite): `signature_v2` over canonicalJson of
  *      { files, format, manifest_sha256, plugin_id, plugin_version }; binds the
  *      manifest, the bundle and the css (see pluginSignatureV2.js). The host
  *      RECOMPUTES every bound value from what was posted and verifies against

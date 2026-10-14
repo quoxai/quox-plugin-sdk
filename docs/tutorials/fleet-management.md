@@ -5,7 +5,7 @@ A host table with Restart and Remove actions behind a confirm modal, with an aud
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin host-console --template fleet-management
+npx @quoxai/create-quox-plugin host-console --template fleet-management
 cd host-console && npm install
 ```
 

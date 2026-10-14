@@ -1,5 +1,5 @@
 /**
- * eslint-plugin-quox-plugin
+ * @quoxai/eslint-plugin
  *
  * Rules for Quox community plugin authors:
  *   - no-cache-as-primary-storage: flag browser-only storage writes when the
@@ -13,8 +13,8 @@ import noHostOnlyGlobals from './rules/no-host-only-globals.js';
 
 const plugin = {
     meta: {
-        name: 'eslint-plugin-quox-plugin',
-        version: '0.3.0',
+        name: '@quoxai/eslint-plugin',
+        version: '0.4.0',
     },
     rules: {
         'no-cache-as-primary-storage': noCacheAsPrimaryStorage,
@@ -24,20 +24,26 @@ const plugin = {
 };
 
 const recommendedRules = {
-    'quox-plugin/no-cache-as-primary-storage': 'warn',
-    'quox-plugin/no-host-only-globals': 'error',
+    '@quoxai/no-cache-as-primary-storage': 'warn',
+    '@quoxai/no-host-only-globals': 'error',
 };
 
-// Legacy (eslintrc) shape.
+// Legacy (eslintrc) shape. ESLint resolves plugin '@quoxai' to the package
+// @quoxai/eslint-plugin, so rules are namespaced '@quoxai/<rule>'.
 plugin.configs.recommended = {
-    plugins: ['quox-plugin'],
+    plugins: ['@quoxai'],
     rules: recommendedRules,
 };
 
-// Flat config shape: `...quoxPlugin.configs['flat/recommended']`.
+// Flat config shape: `quoxai.configs['flat/recommended']` after
+// `import quoxai from '@quoxai/eslint-plugin'`.
 plugin.configs['flat/recommended'] = {
-    plugins: { 'quox-plugin': plugin },
+    plugins: { '@quoxai': plugin },
     rules: recommendedRules,
 };
 
+// Named exports too: ESLint 8 (eslintrc) loads plugins with require(). On
+// Node 22+ require() of this ESM file returns the module namespace, so the
+// plugin's fields must be visible there, not only on the default export.
+export const { meta, rules, configs } = plugin;
 export default plugin;

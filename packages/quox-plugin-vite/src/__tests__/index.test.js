@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 // The vite plugin uses CJS, so we need to handle that
 const quoxPluginVite = require('../index.js');
 
-describe('quox-plugin-vite', () => {
+describe('@quoxai/quox-plugin-vite', () => {
     it('exports a function', () => {
         expect(typeof quoxPluginVite).toBe('function');
     });

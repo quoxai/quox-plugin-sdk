@@ -4,9 +4,9 @@
  * The community plugin API is one RPC surface implemented in four places:
  * the types plugin authors compile against (types.d.ts QuoxPluginApi), the
  * runtime permission map (COMMUNITY_PERMISSION_FOR_METHOD), the dev-preview
- * host (quox-plugin-vite dev-host/rpc.js) and the test mock (testing.js).
+ * host (@quoxai/quox-plugin-vite dev-host/rpc.js) and the test mock (testing.js).
  * The production host (quox-dashboard src/services/pluginFrameHost.js) pins
- * itself to the published quox-plugin-vite map from its own test suite.
+ * itself to the published @quoxai/quox-plugin-vite map from its own test suite.
  * A method present in one place and missing in another is drift: a typed
  * method that the host refuses, or a host method nobody can type against.
  */

@@ -11,10 +11,10 @@ The monorepo uses npm workspaces with these packages:
 
 | Package | Path | Purpose |
 |---------|------|---------|
-| `quox-plugin-sdk` | `packages/quox-plugin-sdk/` | Core types, runtime helpers, testing utilities |
-| `create-quox-plugin` | `packages/create-quox-plugin/` | Interactive scaffolder CLI |
-| `quox-plugin-vite` | `packages/quox-plugin-vite/` | Vite build plugin, `quox-plugin` CLI |
-| `eslint-plugin-quox-plugin` | `packages/eslint-plugin-quox-plugin/` | Lint rules for sandbox constraints |
+| `@quoxai/quox-plugin-sdk` | `packages/quox-plugin-sdk/` | Core types, runtime helpers, testing utilities |
+| `@quoxai/create-quox-plugin` | `packages/create-quox-plugin/` | Interactive scaffolder CLI |
+| `@quoxai/quox-plugin-vite` | `packages/quox-plugin-vite/` | Vite build plugin, `quox-plugin` CLI |
+| `@quoxai/eslint-plugin` | `packages/eslint-plugin-quox-plugin/` | Lint rules for sandbox constraints |
 
 ## Running Tests
 

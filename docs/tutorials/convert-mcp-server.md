@@ -13,7 +13,7 @@ This tutorial will cover converting an existing MCP (Model Context Protocol) ser
 ## Step 1: Scaffold from a live MCP server
 
 ```bash
-npx create-quox-plugin my-mcp-agent --from-mcp "node my-mcp-server.js"
+npx @quoxai/create-quox-plugin my-mcp-agent --from-mcp "node my-mcp-server.js"
 ```
 
 The CLI spawns the given command, performs the MCP `initialize` handshake, sends `notifications/initialized`, calls `tools/list`, then closes the process. There is a 15 second timeout on the whole exchange.
@@ -34,7 +34,7 @@ If you don't want to spawn the server (or can't, in CI), save its `tools/list` r
 Then:
 
 ```bash
-npx create-quox-plugin my-mcp-agent --from-mcp-json ./tools-list.json
+npx @quoxai/create-quox-plugin my-mcp-agent --from-mcp-json ./tools-list.json
 ```
 
 ## Step 3: Review the generated agent

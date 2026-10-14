@@ -1,6 +1,6 @@
 # Dev preview (sandbox simulation)
 
-`vite` (via `quox-plugin-vite`) serves a preview that runs your plugin the way QuoxCORE
+`vite` (via `@quoxai/quox-plugin-vite`) serves a preview that runs your plugin the way QuoxCORE
 runs a community plugin, not the way the dashboard runs first-party code.
 
 ## What the preview does
@@ -24,7 +24,7 @@ runs a community plugin, not the way the dashboard runs first-party code.
 
 ```js
 // vite.config.js
-import quox from 'quox-plugin-vite';
+import quox from '@quoxai/quox-plugin-vite';
 export default { plugins: [quox({ pluginId: 'my-plugin', devBackendUrl: 'http://localhost:4000' })] };
 ```
 

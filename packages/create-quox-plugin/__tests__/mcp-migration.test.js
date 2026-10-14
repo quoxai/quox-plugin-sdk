@@ -83,7 +83,7 @@ describe('loadMcpToolsFromJsonFile', () => {
     });
 });
 
-describe('create-quox-plugin --from-mcp / --from-mcp-json (full scaffold)', () => {
+describe('@quoxai/create-quox-plugin --from-mcp / --from-mcp-json (full scaffold)', () => {
     let tmpDir;
 
     beforeEach(() => {

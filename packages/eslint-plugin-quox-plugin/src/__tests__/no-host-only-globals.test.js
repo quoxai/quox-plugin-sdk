@@ -38,8 +38,8 @@ describe('no-host-only-globals', () => {
 
     it('recommended configs enable both rules', () => {
         for (const cfg of [plugin.configs.recommended, plugin.configs['flat/recommended']]) {
-            expect(cfg.rules['quox-plugin/no-host-only-globals']).toBeTruthy();
-            expect(cfg.rules['quox-plugin/no-cache-as-primary-storage']).toBeTruthy();
+            expect(cfg.rules['@quoxai/no-host-only-globals']).toBeTruthy();
+            expect(cfg.rules['@quoxai/no-cache-as-primary-storage']).toBeTruthy();
         }
         expect(plugin.rules['no-host-only-globals']).toBe(rule);
     });

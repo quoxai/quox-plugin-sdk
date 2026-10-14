@@ -1,5 +1,5 @@
 /**
- * Thin helpers over window.quox (via getQuox from quox-plugin-sdk).
+ * Thin helpers over window.quox (via getQuox from @quoxai/quox-plugin-sdk).
  *
  * A community plugin runs in a sandboxed frame with no network access of its own.
  * Everything goes through the Quox host over RPC:
@@ -10,7 +10,7 @@
  * the error, never a blank screen.
  */
 
-import { getQuox } from 'quox-plugin-sdk';
+import { getQuox } from '@quoxai/quox-plugin-sdk';
 
 /** Call your plugin backend. Resolves to parsed JSON, throws Error on any failure. */
 export async function api(path, { method = 'GET', body } = {}) {

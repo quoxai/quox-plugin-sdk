@@ -5,7 +5,7 @@ A status table refreshed every 60 seconds, with a settings panel for the service
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin service-status --template monitoring-dashboard
+npx @quoxai/create-quox-plugin service-status --template monitoring-dashboard
 cd service-status && npm install
 ```
 

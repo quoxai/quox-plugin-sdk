@@ -5,7 +5,7 @@ An agent status card, tool cards with a parameter form and Run button, and an as
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin scan-agent --template specialist-agent
+npx @quoxai/create-quox-plugin scan-agent --template specialist-agent
 cd scan-agent && npm install
 ```
 

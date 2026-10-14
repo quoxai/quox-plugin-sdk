@@ -5,7 +5,7 @@ Usage meters, feature cards and upgrade gates, with a backend skeleton and Docke
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin insight-suite --template enterprise-extension
+npx @quoxai/create-quox-plugin insight-suite --template enterprise-extension
 cd insight-suite && npm install
 ```
 

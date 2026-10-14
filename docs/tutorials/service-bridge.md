@@ -5,7 +5,7 @@ Connection status, item cards and metrics from a third-party service, plus a not
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin acme-bridge --template service-bridge
+npx @quoxai/create-quox-plugin acme-bridge --template service-bridge
 cd acme-bridge && npm install
 ```
 

@@ -2,7 +2,7 @@
 /**
  * scaffold-snapshot.mjs — SDK-DX P3 verification harness.
  *
- * Runs create-quox-plugin's generator for EVERY template into a temp dir
+ * Runs @quoxai/create-quox-plugin's generator for EVERY template into a temp dir
  * and records a checksum manifest (relative path -> sha256) of every
  * generated file. Used to prove the P3 template-extraction refactor is a
  * byte-identical, mechanical change (Stage 1), and to make the Stage 2

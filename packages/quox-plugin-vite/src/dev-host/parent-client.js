@@ -1,5 +1,5 @@
 /*
- * quox-plugin-vite dev preview: PARENT page script (classic script, no imports).
+ * @quoxai/quox-plugin-vite dev preview: PARENT page script (classic script, no imports).
  *
  * The plugin itself runs in an iframe sandboxed exactly like the QuoxCORE
  * community-plugin sandbox (sandbox="allow-scripts", CSP connect-src 'none').

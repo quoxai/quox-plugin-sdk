@@ -11,7 +11,7 @@
  *   Until it ships, keep your data in plugin storage (getQuox().storage) or your own backend.
  */
 
-import { getQuox } from 'quox-plugin-sdk';
+import { getQuox } from '@quoxai/quox-plugin-sdk';
 import { api } from '../lib/api';
 import useLoad from '../lib/useLoad';
 import { ErrorBanner, InfoBanner, Page } from '../lib/ui';

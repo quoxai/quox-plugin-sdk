@@ -5,7 +5,7 @@ Member cards, policy badges, a task queue, shared context and a chat with the te
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin ops-team --template agentic-team
+npx @quoxai/create-quox-plugin ops-team --template agentic-team
 cd ops-team && npm install
 ```
 

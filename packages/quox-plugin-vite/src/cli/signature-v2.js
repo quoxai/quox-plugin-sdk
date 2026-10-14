@@ -3,7 +3,7 @@
  * QuoxCORE host recomputes (quox-dashboard services/auth/utils/pluginSignatureV2.js
  * is a line-for-line ESM twin of this file; change both together).
  *
- * v1 (quox-plugin-vite 0.2.0) signed only the sha256 of dist/plugin.esm.js, so
+ * v1 (@quoxai/quox-plugin-vite 0.2.0) signed only the sha256 of dist/plugin.esm.js, so
  * the manifest (permissions, backend image) and the CSS could be rewritten
  * under a valid signature. v2 signs one canonical JSON payload:
  *

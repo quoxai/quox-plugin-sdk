@@ -18,8 +18,8 @@ UI runs; its backend calls fail until the host gains the component.
 A community plugin's backend starts only when every one of these holds, checked
 by the host each time the backend is started (and at host boot):
 
-1. **Signature v2.** The bundle was signed with `quox-plugin-vite` 0.3.0 or
-   later (`npx quox-plugin sign`). A v2 signature binds the manifest, so the
+1. **Signature v2.** The bundle was signed with `@quoxai/quox-plugin-vite`
+   (or the old `quox-plugin-vite` 0.3.x) via `npx quox-plugin sign`. A v2 signature binds the manifest, so the
    backend image cannot be swapped after signing. A 0.2.0 (v1) signature binds
    the bundle only, and the host refuses to install a v1-signed plugin that
    declares a backend.
@@ -93,7 +93,7 @@ Your backend container
 Scaffold with a template that ships `backend/`:
 
 ```bash
-npx create-quox-plugin my-monitor --template enterprise-extension
+npx @quoxai/create-quox-plugin my-monitor --template enterprise-extension
 ```
 
 Any HTTP server works. Serve `healthPath` with a 2xx once you are ready:

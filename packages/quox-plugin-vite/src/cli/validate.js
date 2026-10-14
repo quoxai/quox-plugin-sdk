@@ -117,7 +117,7 @@ function checkSignature(root, manifest) {
         return { errors, warnings };
     }
     if (!('format' in sig) && !('signature_v2' in sig)) {
-        warnings.push('dist/signature.json is a v1 signature: it binds dist/plugin.esm.js only, not the manifest or css. Hosts with signature v2 refuse a v1 plugin that asks for more than sidebar, storage and notifications. Re-sign with `quox-plugin sign` (quox-plugin-vite >= 0.3.0).');
+        warnings.push('dist/signature.json is a v1 signature: it binds dist/plugin.esm.js only, not the manifest or css. Hosts with signature v2 refuse a v1 plugin that asks for more than sidebar, storage and notifications. Re-sign with `quox-plugin sign` (@quoxai/quox-plugin-vite, or the old quox-plugin-vite 0.3.x).');
         return { errors, warnings };
     }
     if (sig.format !== FORMAT_V2 || typeof sig.signature_v2 !== 'string' || typeof sig.public_key_hex !== 'string') {
@@ -199,7 +199,7 @@ function validate({ dir = '.' } = {}) {
         }
     }
     if (!fs.existsSync(cssPath)) {
-        warnings.push('dist/plugin.css not found: the sandbox gets no host styles, so an unstyled plugin will render bare (the quox-plugin-vite build emits it unless qxCss:false and no CSS is imported)');
+        warnings.push('dist/plugin.css not found: the sandbox gets no host styles, so an unstyled plugin will render bare (the @quoxai/quox-plugin-vite build emits it unless qxCss:false and no CSS is imported)');
     } else {
         cssBytes = fs.statSync(cssPath).size;
     }

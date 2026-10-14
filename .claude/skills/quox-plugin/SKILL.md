@@ -14,7 +14,7 @@ API that is not there.
 
 Inside the frame a plugin has ONLY:
 - `window.__quoxSharedDeps`: React, ReactDOM, ReactRouterDOM, ReactJSXRuntime.
-- `window.quox` (use `getQuox()` from `quox-plugin-sdk`), every method returns a Promise:
+- `window.quox` (use `getQuox()` from `@quoxai/quox-plugin-sdk`), every method returns a Promise:
   `storage.get/set/remove/keys/getAll`, `fetch(path, {method, headers, body})` (path is relative to
   your plugin's own backend namespace; absolute URLs are refused), `memory.save/search`,
   `aee.emit(intent, payload)` (both @experimental: not available to community plugins yet, they reject `not_available`; do not use), `navigate(path)`, `notify(message, type)`, `getUser()`.
@@ -26,11 +26,11 @@ host contexts, no host component library. Anything that needs a third-party serv
 belongs in the plugin's own backend, reached through `getQuox().fetch`.
 
 Components are mounted with NO props. Get the API with `getQuox()` or `usePluginApi()`.
-Registration is `registerPlugin(pluginId, { routes, sidebar })` from `quox-plugin-sdk`.
+Registration is `registerPlugin(pluginId, { routes, sidebar })` from `@quoxai/quox-plugin-sdk`.
 
 ## Mode: scaffold
 
-Templates (`npm create quox-plugin@latest <name> -- --template <template>`):
+Templates (`npm create @quoxai/quox-plugin@latest <name> -- --template <template>`):
 
 | Template | Use when |
 |----------|----------|
@@ -80,7 +80,7 @@ comparison, limits, backend. Run `npm run validate` after every edit.
   permission. Secrets live there, not in plugin storage.
 - AEE and memory: not available to community plugins yet (`aee.emit`, `memory.save/search` reject
   `not_available`). Use plugin storage or your own backend meanwhile; do not add these calls.
-- Tests: `import { createMockQuox, installMockQuox } from 'quox-plugin-sdk/testing'`.
+- Tests: `import { createMockQuox, installMockQuox } from '@quoxai/quox-plugin-sdk/testing'`.
 
 ## Mode: review
 

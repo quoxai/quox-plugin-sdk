@@ -1,5 +1,5 @@
 /**
- * quox-plugin-sdk testing utilities.
+ * @quoxai/quox-plugin-sdk testing utilities.
  *
  * createMockQuox() is an in-memory stand-in for `window.quox`, matching the
  * surface a community plugin gets inside the Quox sandbox frame.
@@ -177,12 +177,12 @@ export function createMockPluginApi() {
 
 /** @deprecated Use installMockQuox(). */
 export function setupPluginTestEnv() {
-    throw new Error('setupPluginTestEnv() was removed. Use installMockQuox() from "quox-plugin-sdk/testing".');
+    throw new Error('setupPluginTestEnv() was removed. Use installMockQuox() from "@quoxai/quox-plugin-sdk/testing".');
 }
 
 /** @deprecated Use uninstallMockQuox(). */
 export function teardownPluginTestEnv() {
-    throw new Error('teardownPluginTestEnv() was removed. Use uninstallMockQuox() from "quox-plugin-sdk/testing".');
+    throw new Error('teardownPluginTestEnv() was removed. Use uninstallMockQuox() from "@quoxai/quox-plugin-sdk/testing".');
 }
 
 /** @deprecated Glass components do not exist in the sandbox. */

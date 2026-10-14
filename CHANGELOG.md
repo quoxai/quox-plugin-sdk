@@ -1,6 +1,39 @@
 # Changelog
 
-## 0.3.1 (unreleased)
+## 0.4.0 (unreleased)
+
+### Changed: packages are scoped under @quoxai
+
+Only Quox can publish under `@quoxai`, so the scoped names say the package is
+official. The code is the same as 0.3.1.
+
+| Old name (deprecated) | New name |
+| --- | --- |
+| `quox-plugin-sdk` | `@quoxai/quox-plugin-sdk` |
+| `quox-plugin-vite` | `@quoxai/quox-plugin-vite` |
+| `eslint-plugin-quox-plugin` | `@quoxai/eslint-plugin` |
+| `create-quox-plugin` | `@quoxai/create-quox-plugin` |
+
+Migrating an existing plugin:
+- Start a new one with `npm create @quoxai/quox-plugin my-plugin` (or
+  `npx @quoxai/create-quox-plugin my-plugin`).
+- In package.json, replace `quox-plugin-sdk` and `quox-plugin-vite` with the
+  scoped names at `^0.4.0`, and update imports
+  (`from '@quoxai/quox-plugin-sdk'`, `'@quoxai/quox-plugin-sdk/testing'`,
+  `from '@quoxai/quox-plugin-vite'`).
+- ESLint: the plugin is now `@quoxai` and its rules are `@quoxai/<rule>`
+  (for example `@quoxai/no-host-only-globals`). Flat config:
+  `import quoxai from '@quoxai/eslint-plugin'` then
+  `quoxai.configs['flat/recommended']`; eslintrc: `plugins: ['@quoxai']`.
+- The `quox-plugin` CLI (keygen, sign, validate, build) keeps its name.
+
+### Fixed
+- `@quoxai/eslint-plugin` now also exports `rules`, `configs` and `meta` by
+  name, so ESLint 8 (eslintrc) can load it on Node 22+. Before, eslintrc could
+  not find `plugin:<name>/recommended` because the package is ESM-only.
+- Signatures made with the old packages stay valid.
+
+## 0.3.1 (2026-10-14)
 
 ### Added
 - `quox-plugin build [--dir <path>]` runs the project's own vite (`vite build`),

@@ -1,5 +1,5 @@
 /**
- * quox-plugin-vite — Vite plugin for building QuoxCORE third-party plugins.
+ * @quoxai/quox-plugin-vite — Vite plugin for building QuoxCORE third-party plugins.
  *
  * Features:
  *   - Externalises react, react-dom, react-router-dom (provided by QuoxCORE)
@@ -227,7 +227,7 @@ function quoxPluginVite(options = {}) {
             const manifestPath = path.resolve('manifest.json');
 
             if (!fs.existsSync(manifestPath)) {
-                console.warn('[quox-plugin-vite] No manifest.json found, skipping ZIP packaging');
+                console.warn('[@quoxai/quox-plugin-vite] No manifest.json found, skipping ZIP packaging');
                 return;
             }
 
@@ -263,19 +263,19 @@ function quoxPluginVite(options = {}) {
 
                     const outputName = `${pluginId || 'plugin'}.quoxplugin`;
                     zip.writeZip(path.resolve(outputName));
-                    console.log(`\n[quox-plugin-vite] Packaged: ${outputName}`);
+                    console.log(`\n[@quoxai/quox-plugin-vite] Packaged: ${outputName}`);
                     zipCreated = true;
                 } catch {
                     // adm-zip not available
                 }
 
                 if (!zipCreated) {
-                    console.log('\n[quox-plugin-vite] Install adm-zip to auto-package: npm i -D adm-zip');
-                    console.log('[quox-plugin-vite] Build output is in dist/ — manually ZIP to create .quoxplugin');
+                    console.log('\n[@quoxai/quox-plugin-vite] Install adm-zip to auto-package: npm i -D adm-zip');
+                    console.log('[@quoxai/quox-plugin-vite] Build output is in dist/ — manually ZIP to create .quoxplugin');
                 }
 
             } catch (err) {
-                console.error('[quox-plugin-vite] Packaging error:', err.message);
+                console.error('[@quoxai/quox-plugin-vite] Packaging error:', err.message);
             }
         },
     };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fake MCP stdio server used by create-quox-plugin tests. Speaks real
+ * Fake MCP stdio server used by @quoxai/create-quox-plugin tests. Speaks real
  * JSON-RPC 2.0, newline-delimited, over stdin/stdout: initialize handshake,
  * the initialized notification, then tools/list with 3 sample tools (one
  * with a dotted name, matching real-world MCP tool naming).

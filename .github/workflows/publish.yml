@@ -31,14 +31,16 @@ jobs:
       - name: Tag matches package versions
         run: |
           want="${GITHUB_REF_NAME#v}"
-          for p in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
-            v=$(node -p "require('./packages/$p/package.json').version")
-            [ "$v" = "$want" ] || { echo "::error::$p is $v, tag is $want"; exit 1; }
+          # Directories are unscoped; npm names are @quoxai/* (read from each package.json).
+          for d in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
+            v=$(node -p "require('./packages/$d/package.json').version")
+            [ "$v" = "$want" ] || { echo "::error::$d is $v, tag is $want"; exit 1; }
           done
       - name: Publish (dependencies first)
         run: |
-          for p in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
-            v=$(node -p "require('./packages/$p/package.json').version")
+          for d in quox-plugin-sdk quox-plugin-vite eslint-plugin-quox-plugin create-quox-plugin; do
+            p=$(node -p "require('./packages/$d/package.json').name")
+            v=$(node -p "require('./packages/$d/package.json').version")
             if npm view "$p@$v" version >/dev/null 2>&1; then echo "$p@$v already published, skipping"; continue; fi
-            (cd "packages/$p" && npm publish --provenance --access public)
+            (cd "packages/$d" && npm publish --provenance --access public)
           done

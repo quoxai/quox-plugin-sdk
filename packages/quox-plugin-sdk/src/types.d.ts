@@ -1,5 +1,5 @@
 /**
- * quox-plugin-sdk: TypeScript types for Quox community plugins.
+ * @quoxai/quox-plugin-sdk: TypeScript types for Quox community plugins.
  *
  * Community plugins run in a sandboxed iframe. Their host surface is exactly
  * `window.quox` (QuoxPluginApi), the shared React deps and
@@ -195,7 +195,7 @@ export interface Testimonial {
 /**
  * manifest.json. The host REQUIRES `id`, `name`, `version`. The id must match
  * MANIFEST_ID_PATTERN and must not start with a reserved prefix
- * (RESERVED_ID_PREFIXES), both exported from "quox-plugin-sdk".
+ * (RESERVED_ID_PREFIXES), both exported from "@quoxai/quox-plugin-sdk".
  *
  * Fields the host reads: id, name, version, author, permissions, sidebar,
  * routeGuards, integrity, official, backend, agentDefinition, agentPersona,

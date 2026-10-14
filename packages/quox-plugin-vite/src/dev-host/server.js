@@ -186,7 +186,7 @@ function attachDevPreview(server, options = {}) {
                     // Rollup emits END after ERROR; do not let it mask the failure.
                     failed = true;
                     state.error = (e.error && e.error.message) || 'build error';
-                    server.config.logger.error(`[quox-plugin-vite] preview build failed: ${state.error}`);
+                    server.config.logger.error(`[@quoxai/quox-plugin-vite] preview build failed: ${state.error}`);
                     resolveFirst(); broadcast('reload');
                 } else if (e.code === 'END' && !failed) {
                     harvest(); resolveFirst(); broadcast('reload');

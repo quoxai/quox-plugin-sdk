@@ -1,4 +1,4 @@
-# CODEBASE_MAP.md — quox-plugin-sdk
+# CODEBASE_MAP.md: quox-plugin-sdk repo (npm scope @quoxai)
 
 <!-- Last verified: 2026-10-13 by /codebase-mirror -->
 
@@ -11,10 +11,10 @@ An **npm workspace monorepo** with tools for building, previewing, testing, sign
 ```
 quox-plugin-sdk/
 ├── packages/
-│   ├── create-quox-plugin/         # Interactive scaffolder (npx create-quox-plugin), 8 templates
-│   ├── quox-plugin-sdk/            # Runtime helpers, types, testing mocks, AWARE telemetry
-│   ├── quox-plugin-vite/           # Vite build plugin + quox-plugin CLI + sandbox dev preview
-│   ├── eslint-plugin-quox-plugin/  # ESLint rules for plugin authors
+│   ├── create-quox-plugin/         # @quoxai/create-quox-plugin scaffolder (npm create @quoxai/quox-plugin), 8 templates
+│   ├── quox-plugin-sdk/            # @quoxai/quox-plugin-sdk: runtime helpers, types, testing mocks, AWARE telemetry
+│   ├── quox-plugin-vite/           # @quoxai/quox-plugin-vite: Vite build plugin + quox-plugin CLI + sandbox dev preview
+│   ├── eslint-plugin-quox-plugin/  # @quoxai/eslint-plugin: ESLint rules for plugin authors
 │   └── quox-glyph/                 # @quox/glyph, QuoxGlyph terminal output renderer (private)
 ├── scripts/                        # check-pack + deprecated legacy signing/licensing
 ├── docs/                           # 10 guides + 8 tutorials
@@ -38,7 +38,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest + node:test f
 
 ---
 
-## Package: quox-plugin-sdk (runtime)
+## Package: @quoxai/quox-plugin-sdk (runtime)
 
 `packages/quox-plugin-sdk/` — ESM, exports `.`, `./testing`, `./aware`, `./types`.
 
@@ -71,7 +71,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest + node:test f
 
 ---
 
-## Package: quox-plugin-vite (build + CLI + dev preview)
+## Package: @quoxai/quox-plugin-vite (build + CLI + dev preview)
 
 `packages/quox-plugin-vite/` — CJS. Main `src/index.js`, bin `quox-plugin`.
 
@@ -105,7 +105,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest + node:test f
 
 ---
 
-## Package: create-quox-plugin (scaffolder)
+## Package: @quoxai/create-quox-plugin (scaffolder)
 
 `packages/create-quox-plugin/` — bin `create-quox-plugin` (`bin/create.js`, 1231 lines).
 
@@ -127,9 +127,9 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest + node:test f
 
 ---
 
-## Package: eslint-plugin-quox-plugin
+## Package: @quoxai/eslint-plugin
 
-`packages/eslint-plugin-quox-plugin/` — ESM, 2 rules, legacy + flat `recommended` configs:
+`packages/eslint-plugin-quox-plugin/` — ESM, 2 rules, legacy + flat `recommended` configs (namespace `@quoxai`, rules `@quoxai/<rule>`):
 - `no-host-only-globals` (error) — flags `window.__quoxGlass`, throwing `__quoxSharedDeps` stubs, direct fetch/XHR/WebSocket/EventSource
 - `no-cache-as-primary-storage` (warn) — flags browser-only storage writes when the module never persists via `window.quox.storage` / `memory.save`
 

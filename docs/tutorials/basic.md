@@ -5,7 +5,7 @@ The smallest sandbox-safe plugin: it reads the signed-in user with `getQuox().ge
 ## 1. Scaffold
 
 ```bash
-npx create-quox-plugin hello-quox --template basic
+npx @quoxai/create-quox-plugin hello-quox --template basic
 cd hello-quox && npm install
 ```
 

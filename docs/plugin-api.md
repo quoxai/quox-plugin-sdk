@@ -9,7 +9,7 @@ Plugins that Quox itself ships (signed with an official key) run in the host pag
 ## Getting the API
 
 ```js
-import { getQuox } from 'quox-plugin-sdk';
+import { getQuox } from '@quoxai/quox-plugin-sdk';
 
 const quox = getQuox();          // same object as window.quox
 ```
@@ -23,7 +23,7 @@ Every method returns a Promise.
 Call `registerPlugin(pluginId, { routes, sidebar })` once at the bottom of your entry file. Components stay inside the frame; the host sends `route` events with path strings, and the shim mounts `routes[path]` into `#plugin-root` inside a `MemoryRouter`.
 
 ```jsx
-import { registerPlugin, getQuox, getSharedDeps } from 'quox-plugin-sdk';
+import { registerPlugin, getQuox, getSharedDeps } from '@quoxai/quox-plugin-sdk';
 
 const { React } = getSharedDeps();
 
@@ -139,7 +139,18 @@ Only your own `plugin.css` is injected into the frame. Host stylesheets are not 
 | Direct `fetch` / `XMLHttpRequest` / `WebSocket` / `EventSource` | Blocked by CSP. Use `quox.fetch`. |
 | Agent and team registration from a manifest | Ignored in the sandbox. |
 
-The ESLint plugin `eslint-plugin-quox-plugin` flags these (`no-host-only-globals`, `no-cache-as-primary-storage`).
+The ESLint plugin `@quoxai/eslint-plugin` flags these (`no-host-only-globals`, `no-cache-as-primary-storage`).
+
+```js
+// eslint.config.js (ESLint 9 flat config)
+import quoxai from '@quoxai/eslint-plugin';
+export default [quoxai.configs['flat/recommended']];
+```
+
+With eslintrc (ESLint 8), use `"plugins": ["@quoxai"]` and
+`"extends": ["plugin:@quoxai/recommended"]`; that path needs Node 22 or later,
+because ESLint 8 loads plugins with `require()` and the plugin is an ES module.
+Rules are reported as `@quoxai/<rule>`.
 
 ## Permissions
 
@@ -156,24 +167,24 @@ The sandbox host enforces `manifest.permissions` on every `window.quox` call, fa
 
 `sidebar` and `tools` are declarative only: they are listed for the admin but not enforced on calls. The admin reviews the declared permissions at install time, so declare exactly what you use.
 
-The same map is exported as `COMMUNITY_PERMISSION_FOR_METHOD` from `quox-plugin-sdk` (type `PluginPermission`). Three tools check it for you:
+The same map is exported as `COMMUNITY_PERMISSION_FOR_METHOD` from `@quoxai/quox-plugin-sdk` (type `PluginPermission`). Three tools check it for you:
 
-- The dev preview (`quox-plugin-vite`) enforces your `manifest.json` permissions with the same error text, so a missing declaration fails in dev exactly as in production.
+- The dev preview (`@quoxai/quox-plugin-vite`) enforces your `manifest.json` permissions with the same error text, so a missing declaration fails in dev exactly as in production.
 - `quox-plugin validate` scans the built bundle: a call whose permission is not declared is an error naming the permission to add; a declared but unused permission is a warning (least privilege). The scan is a regex over member names (`.storage.`, `.fetch(`, `.memory.`, `.aee.emit`, `.notify(`), so it can over-report if unrelated code has a method with one of those names.
 - `createMockQuox({ permissions })` / `createMockQuox({ manifest })` enforce the gate in unit tests. With neither (and no `strictPermissions: true`) everything is granted, for convenience.
 
 ## Manifest
 
-`manifest.json` requires `id`, `name` and `version`. The id must match `MANIFEST_ID_PATTERN` (`^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$`) and must not start with a reserved prefix (`core-`, `system-`, `quox-`, `admin-`). Both constants are exported from `quox-plugin-sdk`, along with `validateManifestId(id)`.
+`manifest.json` requires `id`, `name` and `version`. The id must match `MANIFEST_ID_PATTERN` (`^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$`) and must not start with a reserved prefix (`core-`, `system-`, `quox-`, `admin-`). Both constants are exported from `@quoxai/quox-plugin-sdk`, along with `validateManifestId(id)`.
 
 Fields the host reads: `id`, `name`, `version`, `author`, `permissions`, `sidebar`, `routeGuards`, `integrity`, `backend`. If the manifest declares `agentDefinition` (`id`, `name`, `role`, `color`, `suggestions`) the Quox host renders the agent sidebar next to your plugin, the same component Quox's own agents use; set `agentSidebar: false` to opt out. Do not hand-build a chat panel. Fields such as `team`, `comparison` and the marketing fields are accepted for official plugins and ignored by the community sandbox. See `PluginManifest` in `types.d.ts`.
 
 ## Testing
 
-`quox-plugin-sdk/testing` provides an in-memory mock of `window.quox`.
+`@quoxai/quox-plugin-sdk/testing` provides an in-memory mock of `window.quox`.
 
 ```js
-import { installMockQuox, uninstallMockQuox } from 'quox-plugin-sdk/testing';
+import { installMockQuox, uninstallMockQuox } from '@quoxai/quox-plugin-sdk/testing';
 
 afterEach(() => uninstallMockQuox());
 
@@ -191,7 +202,7 @@ it('saves a preference', async () => {
 });
 ```
 
-Defaults: `getUser()` returns `{ userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' }` (override with `user`), and `fetch` returns 404 unless you pass a handler. `memory.*` and `aee.emit` reject with `not_available: memory` / `not_available: aee` (after the permission check), like the host today; pass `simulateUnavailable: false` only to test future behaviour. `NOT_AVAILABLE_METHODS` (exported from `quox-plugin-sdk`) lists them. Inspection helpers: `storageMap`, `memoryStore`, `aeeLog`, `notifyLog`, `navigateLog`, `registered`, and `emitEvent(method, args)` to drive `onEvent`. `installMockQuox()` also installs `window.usePluginApi` and a recording `window.__quoxPluginRegister`.
+Defaults: `getUser()` returns `{ userId: 'user_test', orgId: 'org_test', role: 'admin', tier: 'free' }` (override with `user`), and `fetch` returns 404 unless you pass a handler. `memory.*` and `aee.emit` reject with `not_available: memory` / `not_available: aee` (after the permission check), like the host today; pass `simulateUnavailable: false` only to test future behaviour. `NOT_AVAILABLE_METHODS` (exported from `@quoxai/quox-plugin-sdk`) lists them. Inspection helpers: `storageMap`, `memoryStore`, `aeeLog`, `notifyLog`, `navigateLog`, `registered`, and `emitEvent(method, args)` to drive `onEvent`. `installMockQuox()` also installs `window.usePluginApi` and a recording `window.__quoxPluginRegister`.
 
 `createMockQuox(opts)` builds the mock without installing it.
 

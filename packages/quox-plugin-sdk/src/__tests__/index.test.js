@@ -4,7 +4,7 @@ import {
     MANIFEST_ID_PATTERN, RESERVED_ID_PREFIXES, validateManifestId,
 } from '../index.js';
 
-describe('quox-plugin-sdk runtime', () => {
+describe('@quoxai/quox-plugin-sdk runtime', () => {
     beforeEach(() => { globalThis.window = {}; });
     afterEach(() => { delete globalThis.window; });
 

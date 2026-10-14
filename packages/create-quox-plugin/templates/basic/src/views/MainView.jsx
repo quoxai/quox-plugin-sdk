@@ -6,7 +6,7 @@
  * are RPCs to the Quox host and can fail, so both have an error state.
  */
 
-import { getQuox } from 'quox-plugin-sdk';
+import { getQuox } from '@quoxai/quox-plugin-sdk';
 import { loadValue, saveValue, toast } from '../lib/api';
 import useLoad from '../lib/useLoad';
 import { ErrorBanner, Page, Spinner } from '../lib/ui';

@@ -1,5 +1,5 @@
 /**
- * quox-plugin-sdk runtime helpers.
+ * @quoxai/quox-plugin-sdk runtime helpers.
  *
  * Community (third-party) Quox plugins run inside a sandboxed iframe. The only
  * host surface they get is `window.quox` (RPC over postMessage), the shared
@@ -73,7 +73,7 @@ export function getQuox() {
     if (!w || !w.quox) {
         throw new Error(
             'window.quox is not available. This code must run inside a Quox host (the plugin sandbox frame). ' +
-            'In unit tests, call installMockQuox() from "quox-plugin-sdk/testing" first.'
+            'In unit tests, call installMockQuox() from "@quoxai/quox-plugin-sdk/testing" first.'
         );
     }
     return w.quox;
@@ -116,7 +116,7 @@ export function registerPlugin(pluginId, exports) {
     if (!w || typeof w.__quoxPluginRegister !== 'function') {
         throw new Error(
             'window.__quoxPluginRegister is not available. Is the plugin running inside a Quox host? ' +
-            'In unit tests, call installMockQuox() from "quox-plugin-sdk/testing" first.'
+            'In unit tests, call installMockQuox() from "@quoxai/quox-plugin-sdk/testing" first.'
         );
     }
     w.__quoxPluginRegister(pluginId, exports);

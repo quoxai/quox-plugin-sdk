@@ -12,19 +12,19 @@ Everything else goes through `window.quox`, a promise-based API bridged to the h
 
 | Package | Purpose |
 |---------|---------|
-| `create-quox-plugin` | Scaffolder: `npx create-quox-plugin my-plugin` |
-| `quox-plugin-sdk` | Runtime helpers, TypeScript types, and a mock `window.quox` for tests |
-| `quox-plugin-vite` | Vite plugin and the `quox-plugin` CLI (`validate`, `keygen`, `sign`) |
-| `eslint-plugin-quox-plugin` | Lint rules that flag code the sandbox will not allow |
+| `@quoxai/create-quox-plugin` | Scaffolder: `npx @quoxai/create-quox-plugin my-plugin` |
+| `@quoxai/quox-plugin-sdk` | Runtime helpers, TypeScript types, and a mock `window.quox` for tests |
+| `@quoxai/quox-plugin-vite` | Vite plugin and the `quox-plugin` CLI (`validate`, `keygen`, `sign`) |
+| `@quoxai/eslint-plugin` | Lint rules that flag code the sandbox will not allow |
 
 ## Quick start
 
 ```bash
-npx create-quox-plugin my-plugin
+npx @quoxai/create-quox-plugin my-plugin
 cd my-plugin
 npm install
 npm run build      # writes dist/plugin.esm.js and dist/plugin.css (manifest.json stays at the project root)
-                   # (quox-plugin-vite 0.3.1 and later also: npx quox-plugin build [--dir <path>])
+                   # (also: npx quox-plugin build [--dir <path>])
 npm run validate   # checks the manifest and bundle
 npm run sign       # writes dist/signature.json using ./.keys/plugin-signing.pem
 ```

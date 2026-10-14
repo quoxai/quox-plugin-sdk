@@ -142,7 +142,7 @@ function introspectMcpStdioServer(command, options = {}) {
                 const initResult = await request('initialize', {
                     protocolVersion: '2024-11-05',
                     capabilities: {},
-                    clientInfo: { name: 'create-quox-plugin', version: '0.1.0' },
+                    clientInfo: { name: '@quoxai/create-quox-plugin', version: '0.1.0' },
                 });
                 // Handshake requires the initialized notification BEFORE any other request.
                 send('notifications/initialized', {});

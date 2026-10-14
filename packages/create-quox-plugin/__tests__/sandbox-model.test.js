@@ -121,9 +121,9 @@ describe('scaffolded templates follow the community sandbox model', () => {
                 expect(manifest.permissions).not.toContain('aee');
             });
 
-            it('registers through registerPlugin from quox-plugin-sdk', () => {
+            it('registers through registerPlugin from @quoxai/quox-plugin-sdk', () => {
                 const idx = fs.readFileSync(path.join(dirs[t], 'src/index.jsx'), 'utf8');
-                expect(idx).toMatch(/import \{ registerPlugin \} from 'quox-plugin-sdk'/);
+                expect(idx).toMatch(/import \{ registerPlugin \} from '@quoxai\/quox-plugin-sdk'/);
                 expect(idx).toContain(`registerPlugin('t-${t}'`);
                 expect(idx).not.toContain('__quoxPluginRegister');
             });
@@ -149,8 +149,8 @@ describe('scaffolded templates follow the community sandbox model', () => {
             it('package.json uses registry deps ^0.3.0, with the contract scripts', () => {
                 const pkg = JSON.parse(fs.readFileSync(path.join(dirs[t], 'package.json'), 'utf8'));
                 const all = { ...pkg.dependencies, ...pkg.devDependencies };
-                expect(all['quox-plugin-sdk']).toBe('^0.3.0');
-                expect(all['quox-plugin-vite']).toBe('^0.3.0');
+                expect(all['@quoxai/quox-plugin-sdk']).toBe('^0.4.0');
+                expect(all['@quoxai/quox-plugin-vite']).toBe('^0.4.0');
                 expect(JSON.stringify(pkg)).not.toMatch(/file:/);
                 expect(JSON.stringify(pkg)).not.toContain('/home/');
                 expect(pkg.scripts.dev).toBe('vite');
@@ -202,8 +202,8 @@ describe('scaffolded templates follow the community sandbox model', () => {
         const res = scaffold(root, 'local-dev', 'basic', ['--local-sdk', fakeSdk]);
         expect(res.status, res.stderr).toBe(0);
         const pkg = JSON.parse(fs.readFileSync(path.join(res.dir, 'package.json'), 'utf8'));
-        expect(pkg.dependencies['quox-plugin-sdk']).toBe(`file:${path.join(fakeSdk, 'packages/quox-plugin-sdk')}`);
-        expect(pkg.devDependencies['quox-plugin-vite']).toBe(`file:${path.join(fakeSdk, 'packages/quox-plugin-vite')}`);
+        expect(pkg.dependencies['@quoxai/quox-plugin-sdk']).toBe(`file:${path.join(fakeSdk, 'packages/quox-plugin-sdk')}`);
+        expect(pkg.devDependencies['@quoxai/quox-plugin-vite']).toBe(`file:${path.join(fakeSdk, 'packages/quox-plugin-vite')}`);
     });
 
     it('--local-sdk fails clearly when the path is not an SDK checkout', () => {
@@ -214,7 +214,7 @@ describe('scaffolded templates follow the community sandbox model', () => {
 
     it('never auto-detects a local checkout (default deps are registry semvers even inside the monorepo)', () => {
         const pkg = JSON.parse(fs.readFileSync(path.join(dirs.basic, 'package.json'), 'utf8'));
-        expect(pkg.dependencies['quox-plugin-sdk']).toBe('^0.3.0');
+        expect(pkg.dependencies['@quoxai/quox-plugin-sdk']).toBe('^0.4.0');
     });
 
     it('--from-mcp-json output follows the sandbox model too', () => {
@@ -271,10 +271,11 @@ describe('enterprise-extension backend', () => {
     });
 });
 
-describe('create-quox-plugin package.json (publish fields)', () => {
+describe('@quoxai/create-quox-plugin package.json (publish fields)', () => {
     const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
     it('carries the contract fields', () => {
-        expect(pkg.version).toBe('0.3.1');
+        expect(pkg.version).toBe('0.4.0');
+        expect(pkg.name).toBe('@quoxai/create-quox-plugin');
         expect(pkg.license).toBe('Apache-2.0');
         expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/quoxai/quox-plugin-sdk.git', directory: 'packages/create-quox-plugin' });
         expect(pkg.homepage).toBe('https://quox.ai/docs/plugin-sdk');

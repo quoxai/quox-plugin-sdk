@@ -3,10 +3,10 @@
  *
  * Community plugins run inside a sandboxed frame. registerPlugin hands your
  * route components to the host; everything else (storage, backend calls,
- * memory, notifications) goes through getQuox() from quox-plugin-sdk.
+ * memory, notifications) goes through getQuox() from @quoxai/quox-plugin-sdk.
  */
 
-import { registerPlugin } from 'quox-plugin-sdk';
+import { registerPlugin } from '@quoxai/quox-plugin-sdk';
 import MainView from './views/MainView';${settingsImport}
 
 registerPlugin('${pluginName}', {
