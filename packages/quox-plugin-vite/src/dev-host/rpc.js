@@ -116,6 +116,9 @@ function createDevRpc({ pluginId, backendUrl = '', doFetch, user = {}, permissio
 
     return {
         state,
+        // The method set this stand-in serves; quox-plugin-sdk's frame contract
+        // test pins it to the typed window.quox surface.
+        methods: Object.freeze(Object.keys(handlers)),
         async handle(method, args) {
             const h = handlers[method];
             if (!h) throw new Error(`unknown_method:${method}`);

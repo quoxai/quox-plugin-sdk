@@ -274,7 +274,7 @@ describe('enterprise-extension backend', () => {
 describe('create-quox-plugin package.json (publish fields)', () => {
     const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
     it('carries the contract fields', () => {
-        expect(pkg.version).toBe('0.3.0');
+        expect(pkg.version).toBe('0.3.1');
         expect(pkg.license).toBe('Apache-2.0');
         expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/quoxai/quox-plugin-sdk.git', directory: 'packages/create-quox-plugin' });
         expect(pkg.homepage).toBe('https://quox.ai/docs/plugin-sdk');

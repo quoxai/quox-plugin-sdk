@@ -24,6 +24,7 @@ npx create-quox-plugin my-plugin
 cd my-plugin
 npm install
 npm run build      # writes dist/plugin.esm.js and dist/plugin.css (manifest.json stays at the project root)
+                   # (quox-plugin-vite 0.3.1 and later also: npx quox-plugin build [--dir <path>])
 npm run validate   # checks the manifest and bundle
 npm run sign       # writes dist/signature.json using ./.keys/plugin-signing.pem
 ```
@@ -52,6 +53,9 @@ quox plugin install \
 | [Signing](docs/signing.md) | Ed25519 signatures |
 | [Backend plugins](docs/backend-plugins.md) | Adding a backend service |
 | [Claude skill](docs/claude-skill.md) | Optional AI-assisted plugin development |
+| [Quality tiers](docs/quality-tiers.md) | Bronze, Silver, Gold criteria (specification; no listing flow yet) |
+| [Listing](docs/listing.md) | Why a listing review is not a security review |
+| [W5 status](docs/W5-STATUS.md) | Outside-builder readiness, item by item, with evidence |
 
 ## Developing this repo
 

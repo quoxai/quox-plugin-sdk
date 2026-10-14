@@ -1,8 +1,10 @@
-/** quox-plugin CLI: validate | keygen | sign */
+/** quox-plugin CLI: build | validate | keygen | sign */
 const { validate } = require('./validate.js');
 const { keygen, sign } = require('./signing.js');
+const { build } = require('./build.js');
 
 const USAGE = `Usage:
+  quox-plugin build [--dir .]
   quox-plugin validate [--dir .]
   quox-plugin keygen --out <dir> [--force]
   quox-plugin sign --key <private.pem> [--dir .]
@@ -25,6 +27,11 @@ function run(argv, io = { log: console.log, error: console.error }) {
     try { args = parseArgs(argv); } catch (e) { io.error(e.message + '\n' + USAGE); return 1; }
     const cmd = args._[0];
     try {
+        if (cmd === 'build') {
+            const status = build({ dir: args.dir || '.' });
+            if (status !== 0) io.error(`build: vite exited ${status}`);
+            return status;
+        }
         if (cmd === 'validate') {
             const r = validate({ dir: args.dir || '.' });
             for (const w of r.warnings) io.log(`warn   ${w}`);

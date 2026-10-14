@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.1 (unreleased)
+
+### Added
+- `quox-plugin build [--dir <path>]` runs the project's own vite (`vite build`),
+  so build, validate and sign live in one CLI. It resolves vite from the
+  project, never from this package. `npm run build` keeps working as before.
+
+### Changed
+- The dev preview host reports the method set it serves, and a new test in
+  `quox-plugin-sdk` pins the typed `window.quox` surface, the permission map,
+  the dev preview host and the test mock to one method set, so they cannot
+  drift apart unnoticed.
+
+### Docs
+- docs/quality-tiers.md: Bronze, Silver, Gold criteria (Gold needs live
+  receipts from a real host). Specification only: there is no listing flow yet.
+- docs/listing.md: a listing review is not a security review.
+- docs/W5-STATUS.md: outside-builder readiness, item by item.
+
 ## 0.3.0 (2026-10-14)
 
 All four packages move together: `quox-plugin-sdk`, `quox-plugin-vite`,
