@@ -9,6 +9,7 @@
     ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
     "./testing": { "types": "./src/testing.d.ts", "default": "./src/testing.js" },
     "./aware": { "types": "./src/aware.d.ts", "default": "./src/aware.js" },
+    "./status-row": { "types": "./src/statusRow.d.ts", "default": "./src/statusRow.js" },
     "./types": "./src/types.d.ts",
     "./package.json": "./package.json"
   },
@@ -19,6 +20,8 @@
     "src/testing.d.ts",
     "src/aware.js",
     "src/aware.d.ts",
+    "src/statusRow.js",
+    "src/statusRow.d.ts",
     "src/types.d.ts",
     "LICENSE", "NOTICE"
   ],

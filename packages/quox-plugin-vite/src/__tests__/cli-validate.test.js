@@ -172,3 +172,31 @@ describe('validate(dir) permission scan', () => {
         expect(r.warnings.join('\n')).not.toMatch(/permission/);
     });
 });
+
+describe('validateManifest statusRows', () => {
+    const base = { id: 'abc-plugin', name: 'n', version: '1.0.0' };
+    const d = (o = {}) => ({ id: 'backups', label: 'Backups', path: 'rows/backups', ...o });
+    it('accepts valid statusRows and manifests without them', () => {
+        expect(validateManifest(base).ok).toBe(true);
+        expect(validateManifest({ ...base, statusRows: [d()] }).ok).toBe(true);
+    });
+    it('fails on bad statusRows like other manifest errors', () => {
+        for (const statusRows of [[d({ path: '/abs' })], [d(), d()], [1, 2, 3, 4].map((n) => d({ id: `r${n}` })), 'x']) {
+            const r = validateManifest({ ...base, statusRows });
+            expect(r.ok).toBe(false);
+            expect(r.error).toBe('manifest_invalid');
+        }
+    });
+    it('stays in sync with the SDK validateStatusRowDecls on a fixture set', async () => {
+        const { validateStatusRowDecls: sdk } = await import('../../../quox-plugin-sdk/src/statusRow.js');
+        const { validateStatusRowDecls: local } = require('../cli/status-rows.js');
+        const fixtures = [
+            [], [d()], [d({ every: '5s' })], [d({ every: '4s' })], [d({ every: '1d' })], [d({ every: '24h' })], [d({ every: '25h' })],
+            [d(), d()], [1, 2, 3, 4].map((n) => d({ id: `r${n}` })), 'x', {}, ['x'], [d({ id: '-a' })], [d({ id: 'a'.repeat(25) })],
+            [d({ label: '' })], [d({ label: 'a'.repeat(25) })], [d({ description: 'a'.repeat(201) })],
+            ...['', '/abs', '//h/x', 'http://x', 'a b', 'a#b', 'a\\b', '../x', 'a/./b', 'a/%2E%2e/b', 'a%2fb', 'a'.repeat(301), 'a<b', 'ok/path?x=1&y=a:b,c+d~e-f_g.h']
+                .map((path) => [d({ path })]),
+        ];
+        for (const f of fixtures) expect(local(f), JSON.stringify(f)).toEqual(sdk(f));
+    });
+});

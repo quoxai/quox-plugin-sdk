@@ -201,6 +201,35 @@ export interface Testimonial {
  * routeGuards, integrity, official, backend, agentDefinition, agentPersona,
  * delegatorKeywords. Everything else is optional metadata.
  */
+/** One-line terminal status row payload returned by a plugin backend route. See docs/status-rows.md. */
+export interface StatusRowPayload {
+    /** Required unless `value` is given. Max 160 chars. */
+    text?: string;
+    /** Max 16 chars. */
+    label?: string;
+    /** Finite number, or string of max 24 chars. */
+    value?: number | string;
+    tone?: 'ok' | 'warn' | 'error' | 'info' | 'neutral';
+    /** Direction, or the numeric change. */
+    trend?: 'up' | 'down' | 'flat' | number;
+    /** http(s) URL, no credentials, max 500 chars. */
+    link?: string;
+}
+
+/** Manifest declaration of a status row. See docs/status-rows.md. */
+export interface PluginStatusRowDecl {
+    /** /^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/, unique within the manifest. */
+    id: string;
+    /** 1 to 24 chars. */
+    label: string;
+    /** Relative route of the plugin's own backend; the host calls GET /api/v1/plugins/<pluginId>/<path>. */
+    path: string;
+    /** Refresh interval, e.g. "30s", "5m", "1h" (5s to 1 day). */
+    every?: string;
+    /** Max 200 chars. */
+    description?: string;
+}
+
 export interface PluginManifest {
     /** Lowercase alphanumeric + dashes, 3-64 chars. No core-/system-/quox-/admin- prefix. */
     id: string;
@@ -225,6 +254,11 @@ export interface PluginManifest {
     /** Only honoured for bundles signed by a Quox official key. Community plugins cannot set this. */
     official?: boolean;
     minQuoxVersion?: string;
+    /**
+     * One-line terminal status rows for the quox CLI window (max 3). Each is
+     * served by a route of the plugin's own backend. See docs/status-rows.md.
+     */
+    statusRows?: PluginStatusRowDecl[];
     backend?: {
         image: string;
         healthPath?: string;

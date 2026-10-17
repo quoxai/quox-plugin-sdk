@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { validateStatusRowDecls } = require('./status-rows.js');
 const { FORMAT_V2, sha256Hex, v2Payload, v2Message } = require('./signature-v2.js');
 
 const PLUGIN_ID_RE = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
@@ -34,6 +35,10 @@ function validateManifest(manifest) {
     }
     if (typeof manifest.version !== 'string' || !SEMVER_RE.test(manifest.version)) {
         return { ok: false, error: 'manifest_invalid', message: `version "${manifest.version}" is not semver (expected e.g. 1.0.0)` };
+    }
+    if (manifest.statusRows !== undefined) {
+        const sr = validateStatusRowDecls(manifest.statusRows);
+        if (!sr.ok) return { ok: false, error: 'manifest_invalid', message: sr.errors.join('; ') };
     }
     return { ok: true };
 }
