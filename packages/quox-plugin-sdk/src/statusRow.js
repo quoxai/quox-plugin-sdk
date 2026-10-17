@@ -1,5 +1,5 @@
 /**
- * @quox/plugin-sdk/status-row: the contract for one-line terminal status rows
+ * @quoxai/quox-plugin-sdk/status-row: the contract for one-line terminal status rows
  * shown in the quox CLI window. Zero dependencies, pure functions.
  *
  * A plugin declares rows in manifest.json (`statusRows`, max 3) and serves each

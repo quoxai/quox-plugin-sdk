@@ -4,7 +4,7 @@ A status row is a single line of live status that your plugin puts in the `quox`
 for example `Backups  3  failed overnight  up 2`. The host polls a route of your plugin's own
 backend, validates the JSON, strips terminal control characters and draws the line.
 
-The contract helper is `@quox/plugin-sdk/status-row` (zero dependencies, pure functions).
+The contract helper is `@quoxai/quox-plugin-sdk/status-row` (zero dependencies, pure functions).
 
 ## The payload
 
@@ -45,7 +45,7 @@ Declare up to 3 rows in `manifest.json`:
 ## A minimal backend route
 
 ```js
-import { statusRow } from '@quox/plugin-sdk/status-row';
+import { statusRow } from '@quoxai/quox-plugin-sdk/status-row';
 
 app.get('/rows/backups', async (req, res) => {
   const failed = await db.countFailedBackups();
