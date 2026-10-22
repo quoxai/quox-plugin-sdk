@@ -1,5 +1,7 @@
 # Quox Plugin SDK
 
+![Quox project overview](docs/assets/readme-hero.png)
+
 Tools for building third-party plugins for [Quox](https://quox.ai), the self-hosted control plane for AI agents. Scaffold a plugin, build it with Vite, validate it, sign it, and install it into a Quox instance.
 
 ## How community plugins run
