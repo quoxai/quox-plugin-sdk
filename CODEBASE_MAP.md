@@ -1,6 +1,6 @@
 # CODEBASE_MAP.md: quox-plugin-sdk repo (npm scope @quoxai)
 
-<!-- Last verified: 2026-11-05 by /codebase-mirror -->
+<!-- Last verified: 2026-11-08 by /codebase-mirror -->
 
 > Auto-generated structural map of the QuoxCORE Plugin SDK monorepo. Counts come from the files and the test run on the verification date, not from memory.
 
@@ -31,23 +31,25 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 | Packages | 5 (4 publishable under `@quoxai` at 0.4.1, `@quox/glyph` private at 0.1.0) |
 | Scaffold templates | 8 (+ `_shared`) |
 | Test files | 24 (23 vitest + 1 node:test) |
-| Test cases | 360 (351 vitest + 9 node:test), all passing on 2026-11-05 |
+| Test cases | 360 (351 vitest + 9 node:test), all passing on 2026-11-08 |
 | Docs | 23 (14 guides + 9 tutorials) |
 | Root scripts | 4 (1 active, 3 deprecated) |
 | ESLint rules | 2 |
 | `quox-plugin` CLI commands | 4 (build, validate, keygen, sign) |
 | Dev preview routes | 6 |
-| `window.quox` RPC methods | 13 (3 of them `not_available` stubs) |
+| `window.quox` methods | 13 (12 RPC methods + frame-local `onEvent`; 3 RPC methods are `not_available` stubs) |
 | Manifest permissions (`PluginPermission`) | 7 (sidebar, storage, network, memory, notifications, aee, tools) |
 | Permissions gating RPC methods | 5 (storage, network, memory, aee, notifications) |
+| Published tarball files (check:pack) | sdk 12, vite 19, create 58, eslint 6 |
 | CI workflows | 2 |
 
 ## Registration chains
 
 - **New runtime export:** add to `packages/quox-plugin-sdk/src/<module>.js` + matching `.d.ts`, list both files in `package.json` `files` and `exports`, then run `npm run check:pack`. If it is a `window.quox` method, update `COMMUNITY_PERMISSION_FOR_METHOD` in `index.js`, the mock in `testing.js`, `PERMISSION_FOR_METHOD` in `quox-plugin-vite/src/dev-host/rpc.js`, and `QuoxPluginApi` in `types.d.ts`; `frame-contract.test.js` fails until all four agree.
-- **New CLI command:** add `src/cli/<cmd>.js` in quox-plugin-vite, wire it in `src/cli/main.js` (`USAGE` string + dispatch), add `src/__tests__/cli-<cmd>.test.js`.
+- **New CLI command:** add `src/cli/<cmd>.js` in quox-plugin-vite, wire it in `src/cli/main.js` (`USAGE` string + `cmd === '<name>'` dispatch), add `src/__tests__/cli-<cmd>.test.js`.
 - **New template:** add `templates/<name>/` in create-quox-plugin, append to the `TEMPLATES` array in `bin/create.js` (name, description, suggestedCategory), regenerate snapshots with `scripts/scaffold-snapshot.mjs`, add a tutorial under `docs/tutorials/` and a row in `docs/templates.md`.
 - **New ESLint rule:** add `src/rules/<rule>.js`, import it in `src/index.js` and add to `rules` + `recommendedRules`, add `src/__tests__/<rule>.test.js`.
+- **New dev preview route:** add a `route === '/<name>' && method === '<VERB>'` branch in `src/dev-host/server.js` (all routes live under `BASE = /__quox-dev`), cover it in `dev-host.test.js`.
 - **Release:** bump all four `@quoxai/*` package versions to the same number, add a CHANGELOG entry, push tag `v<version>`; `publish.yml` refuses a tag that does not match every package version.
 
 ## Authoritative files
@@ -56,13 +58,14 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 |------|---------|-------|
 | `package.json` (root) | workspaces `packages/*`, test orchestration, check:pack | 5 workspaces |
 | `packages/quox-plugin-sdk/src/index.js` | runtime helpers, permission map, `not_available` set, id rules | 10 exports |
-| `packages/quox-plugin-sdk/src/types.d.ts` | the sandbox contract (manifest, permissions, `QuoxPluginApi`) | 429 lines, 30 exported types |
+| `packages/quox-plugin-sdk/src/types.d.ts` | the sandbox contract (manifest, permissions, `QuoxPluginApi`) | 429 lines, 29 exported types |
 | `packages/quox-plugin-sdk/src/statusRow.js` | status-row payload/declaration contract | 4 exports |
 | `packages/quox-plugin-sdk/src/aware.js` | AWARE presence/telemetry client | 5 exports |
 | `packages/quox-plugin-sdk/src/testing.js` | in-memory sandbox mock | 7 exports |
-| `packages/quox-plugin-vite/src/index.js` | Vite plugin (externals, ZIP packaging, dev preview attach) | 6 externalised deps |
+| `packages/quox-plugin-vite/src/index.js` | Vite plugin (externals, ZIP packaging, dev preview attach) | 6 externalised specifiers |
 | `packages/quox-plugin-vite/src/cli/main.js` | `quox-plugin` CLI dispatch | 4 commands |
 | `packages/quox-plugin-vite/src/dev-host/server.js` | sandbox dev preview under `/__quox-dev` | 6 routes |
+| `packages/quox-plugin-vite/src/dev-host/rpc.js` | dev-side `window.quox` stand-in, exports `createDevRpc`, `PERMISSION_FOR_METHOD`, `NOT_AVAILABLE` | 12 handlers |
 | `packages/create-quox-plugin/bin/create.js` | scaffolder (1236 lines), `TEMPLATES` + `CATEGORIES` | 8 templates, 7 categories |
 | `packages/eslint-plugin-quox-plugin/src/index.js` | rules, `recommended` + `flat/recommended` configs | 2 rules |
 | `vitest.config.js` | excludes node_modules, dist, quox-glyph | |
@@ -78,8 +81,8 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 | Scripts referenced in docs exist | ✓ pass | `scripts/generate-license.js` and `packages/quox-plugin-vite/scripts/sync-glass-css.mjs` exist; `quox:scripts/check-sdk-qx-css.mjs` is a dashboard-repo path by design |
 | Permission map identical in sdk, mock, dev host, types | ✓ pass | pinned by `frame-contract.test.js` (5 cases) |
 | Status-row declaration rules identical in sdk (ESM) and vite CLI (CJS) | ✓ pass | duplicated on purpose; `cli-validate.test.js` keeps them in sync |
-| Published tarballs contain only allowlisted files | ✓ pass | `npm run check:pack` green in CI; `@quox/glyph` excluded (not in the publish set) |
-| Claude skill copy in `.claude/skills/` matches the one the scaffolder ships | ✓ pass | `diff -q` identical |
+| Published tarballs contain only allowlisted files | ✓ pass | `npm run check:pack` green on 2026-11-08 (sdk 12, vite 19, create 58, eslint 6 files); `@quox/glyph` skipped (not in the publish set) |
+| Claude skill copy in `.claude/skills/` matches the one the scaffolder ships | ✓ pass | `diff -rq` identical |
 
 ---
 
@@ -102,7 +105,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 
 **`src/aware.js`**: AWARE presence/telemetry client (collector-side, not sandbox). `createAware({feed, orgId, collectorUrl, serviceKey, surface, fetchImpl, timeoutMs})`, `validateEvent()`, `startHeartbeat()` with backoff. Constants: 5 `LEDGERS` (vital, operational, intentional, social, security), 5 `KINDS` (state, delta, ask, heartbeat, retract).
 
-**`src/types.d.ts`** (429 lines): the contract. `PluginManifest` (incl. `statusRows?`), `PluginPermission`, `QuoxPluginApi` (alias `PluginAPI`), `SharedDeps`, `PluginExports`, `SidebarItem`, `StatusRowPayload`, `PluginStatusRowDecl`, agent/team shapes (`AgentDefinition`, `AgentPersona`, `AgentAutonomy`, `AgentBudget`, `AgentEscalation`, `LlmConfig`, `ToolDefinition`, `TeamDefinition`, `TeamPolicies`, `TeamMemberRef`), `NocIntegration`, `NocQuickAction`, `SafetyConfig`, `ConfigSchemaField`, marketplace shapes (`Capabilities`, `ComparisonTier`, `TierLimits`, `Testimonial`).
+**`src/types.d.ts`** (429 lines, 29 exports): the contract. `PluginManifest` (incl. `statusRows?`), `PluginPermission`, `QuoxPluginApi` (alias `PluginAPI`), `SharedDeps`, `PluginExports`, `SidebarItem`, `StatusRowPayload`, `PluginStatusRowDecl`, agent/team shapes (`SpecialistAgent`, `AgentPersonality`, `AgentDefinition`, `AgentPersona`, `AgentAutonomy`, `AgentBudget`, `AgentEscalation`, `LlmConfig`, `ToolDefinition`, `TeamDefinition`, `TeamPolicies`, `TeamMemberRef`), `NocIntegration`, `NocQuickAction`, `SafetyConfig`, `ConfigSchemaField`, marketplace shapes (`Capabilities`, `ComparisonTier`, `TierLimits`, `Testimonial`).
 
 **`window.quox` API** (`QuoxPluginApi`):
 | Method | Permission | Notes |
@@ -114,7 +117,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 | `notify(message, type)` | notifications | |
 | `navigate(path)` | none | host shell navigation |
 | `getUser()` | none | `{userId, orgId, role, tier}` |
-| `onEvent(fn)` | none | host events (e.g. `route`), synchronous |
+| `onEvent(fn)` | none | frame-local (not an RPC): host events (e.g. `route`), synchronous |
 
 ---
 
@@ -140,14 +143,14 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 | `quox-plugin sign --key <private.pem> [--dir .]` | signature v2 (`src/cli/signature-v2.js`, `FORMAT_V2`): canonical-JSON manifest sha256 + sha256 of every shipped file (bundle, css), writes `dist/signature.json`; prints the `quox plugin install` line |
 
 **`src/dev-host/`** (sandbox dev preview, attached under the Vite dev server at `BASE = /__quox-dev`):
-- `server.js`: runs a nested production-mode watch build into a temp dir and inlines the result into the frame (the sandbox CSP cannot load URLs). Routes:
+- `server.js` (exports `attachDevPreview`, `createPreviewRouter`, `BASE`): runs a nested production-mode watch build into a temp dir and inlines the result into the frame (the sandbox CSP cannot load URLs). Routes:
   - `GET /` (and `/index.html`): preview parent page
   - `GET /__quox-dev/parent.js`: parent client
   - `GET /__quox-dev/meta.json`: plugin meta + CSP + served method list
   - `GET /__quox-dev/events`: SSE reload channel
   - `GET /__quox-dev/frame?channel=<hex32>`: sandbox iframe srcdoc
   - `POST /__quox-dev/rpc`: `window.quox` RPC (same-origin only)
-- `rpc.js`: in-memory `window.quox` mock (`createDevRpc`) enforcing the same `PERMISSION_FOR_METHOD` and `NOT_AVAILABLE` set as the host; `fetch` forwards GET/POST/PUT/PATCH/DELETE to `devBackendUrl` / `QUOX_DEV_BACKEND_URL` (404 `dev_backend_not_configured` when unset) with host path confinement copied (no scheme, no `//`, no `..`, no control chars); exposes `methods` for the contract test
+- `rpc.js`: in-memory `window.quox` stand-in (`createDevRpc`, 12 handlers) enforcing the same `PERMISSION_FOR_METHOD` and `NOT_AVAILABLE` set as the host; `fetch` forwards GET/POST/PUT/PATCH/DELETE to `devBackendUrl` / `QUOX_DEV_BACKEND_URL` (404 `dev_backend_not_configured` when unset) with host path confinement copied (no scheme, no `//`, no `..`, no control chars); exposes `methods` for the contract test
 - `frame.js` / `frame-deps.js`: frame srcdoc with production CSP (`FRAME_CSP`, `default-src 'none'`), inlined deps
 - `page.js` / `parent-client.js`: parent shell and postMessage bridge
 
@@ -171,7 +174,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 | ui-feature | client-side feature w/ storage+config (Action Tracker) | Productivity | storage-centric |
 | enterprise-extension | multi-tier + Dockerised backend | AI & Intelligence | tiers/usage meters, UpgradeGate; `backend/server.js` (express: GET /health, GET /usage) + Dockerfile |
 | specialist-agent | agent w/ tools, persona, autonomy, chat (Security Scanner) | AI & Intelligence | `src/agent/` (agentDef, agentPersona, tools), host renders the sidebar dock |
-| agentic-team | multi-agent team + policies (DevOps Team) | Infrastructure | `src/team/` (teamDef, agents, personas, policies, tools), 1 orchestrator + 3 members |
+| agentic-team | multi-agent team + policies (DevOps Team) | Infrastructure | `src/team/` (teamDef, agents, personas, policies, tools), 1 orchestrator + 3 members, 17 files |
 
 `templates/_shared/` holds per-project common files: `index.jsx`, `vite.config.js`, `_gitignore`, and `src/lib/` helpers (api.js RPC wrapper, useLoad, ui.jsx atoms, useConfig, ConfigForm). `lib/mcp-introspect.js` exports `introspectMcpStdioServer()` and `loadMcpToolsFromJsonFile()`. `skill/quox-plugin/SKILL.md` is copied into new projects' `.claude/skills/` unless `--no-skill`. `scripts/scaffold-snapshot.mjs` regenerates test snapshots.
 
@@ -187,7 +190,7 @@ Root scripts: `npm run build` (all workspaces), `npm test` (vitest, then node:te
 
 ## Package: @quox/glyph (private, not published)
 
-`packages/quox-glyph/index.js`: canonical JS renderer for the QuoxGlyph terminal output language; JS Quox CLIs consume this instead of hand-porting. Exports: `line(surface, verb)` grammar lines, `meter(done, total)` gradient meters, `brandName`, `celebrate`, `receipt(hash, ts)`, `events` lifecycle helpers, `setColor` (`QUOX_COLOR=2` forces colour); constants `GRAD`, `RAINBOW`, `STATUS`, `ICONS`, `BUDGETS`, `PUA_Q`. Tests via node:test, excluded from vitest and from check:pack.
+`packages/quox-glyph/index.js`: canonical JS renderer for the QuoxGlyph terminal output language; JS Quox CLIs consume this instead of hand-porting. Exports: `line(surface, verb)` grammar lines, `meter(done, total)` gradient meters, `brandName`, `celebrate`, `receipt(hash, ts)`, `events` lifecycle helpers, `setColor` (`QUOX_COLOR=2` forces colour); constants `GRAD`, `RAINBOW`, `STATUS`, `ICONS`, `BUDGETS`, `PUA_Q`. Tests via node:test, excluded from vitest and skipped by check-pack.
 
 ---
 
@@ -209,13 +212,13 @@ Deprecated three kept for official/legacy signing flows only.
 | `package.json` (root) | workspaces (`packages/*`), test orchestration (vitest + node:test split), check:pack |
 | `vitest.config.js` | excludes node_modules, dist, and quox-glyph (node:test) |
 | `.github/workflows/ci.yml` | push to main + PRs: `npm ci`, `npm test`, `npm run check:pack` on Node 20 and 22 |
-| `.github/workflows/publish.yml` | tag `v*`: test + check:pack, assert tag equals every `@quoxai/*` version, `npm publish --provenance --access public` via trusted publishing (no stored token, `id-token: write`), dependencies first, skips already-published versions |
+| `.github/workflows/publish.yml` | tag `v*`: Node 22, npm >= 11.5.1, test + check:pack, assert tag equals every `@quoxai/*` version, `npm publish --provenance --access public` via trusted publishing (no stored token, `id-token: write`), dependencies first, skips already-published versions |
 | `packages/quox-plugin-vite/assets/qx-components.css` | vendored dashboard qx stylesheet + design tokens injected into every build and the dev preview |
 | per-project `vite.config.js` (template) | generated into scaffolds; wires `quoxPluginVite({pluginId})` |
 
 ## Test structure
 
-Vitest everywhere except quox-glyph (node:test). 24 files, 360 cases, all green on 2026-11-05.
+Vitest everywhere except quox-glyph (node:test). 24 files, 360 cases, all green on 2026-11-08.
 
 | Location | Files | Cases | Covers |
 |----------|-------|-------|--------|
@@ -228,7 +231,7 @@ Vitest everywhere except quox-glyph (node:test). 24 files, 360 cases, all green 
 
 ## Docs
 
-`docs/` (14): getting-started, plugin-api, templates, signing, dev-preview, backend-plugins, aware, status-rows, claude-skill, suggested-rules, listing, quality-tiers (Bronze/Silver/Gold, specification only), plan-sdk-dx, W5-STATUS (outside-builder readiness audit, 2026-10-14). `docs/tutorials/` (9): one per template (basic, monitoring-dashboard, fleet-management, service-bridge, ui-feature, enterprise-extension, specialist-agent, agentic-team) plus convert-mcp-server (draft). `docs/assets/readme-hero.png` is the README artwork.
+`docs/` (14): getting-started, plugin-api, templates, signing, dev-preview, backend-plugins, aware, status-rows, claude-skill, suggested-rules, listing, quality-tiers (Bronze/Silver/Gold, specification only), plan-sdk-dx, W5-STATUS (outside-builder readiness audit, 2026-10-14). `docs/tutorials/` (9): one per template (basic, monitoring-dashboard, fleet-management, service-bridge, ui-feature, enterprise-extension, specialist-agent, agentic-team) plus convert-mcp-server (draft). `docs/assets/readme-hero.png` is the README artwork. `CHANGELOG.md` top entry is 0.4.1 (2026-10-14, release-process only; code identical to 0.4.0).
 
 ## Key invariants (enforced in 3+ places, keep in sync)
 
